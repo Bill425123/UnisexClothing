@@ -1,0 +1,304 @@
+@{
+    ViewData["Title"] = "Chi tiết Đơn hàng";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+    int orderId = ViewBag.OrderId ?? 0;
+}
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <h2><i class="fas fa-shopping-cart"></i> Chi tiết Đơn hàng #@orderId</h2>
+    </div>
+    <div class="col-md-6 text-end">
+        <a href="/Admin/Orders" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Quay lại
+        </a>
+        <button class="btn btn-success" onclick="window.print()">
+            <i class="fas fa-print"></i> In hóa đơn
+        </button>
+    </div>
+</div>
+
+<!-- Order Information -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> Thông tin đơn hàng</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong>Mã đơn hàng:</strong> #@orderId
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Ngày đặt:</strong> <span id="orderDate">-</span>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong>Trạng thái:</strong>
+                        <select id="orderStatus" class="form-select form-select-sm d-inline-block w-auto ms-2" onchange="updateOrderStatus(@orderId, this.value)">
+                            <option value="pending">Chờ xác nhận</option>
+                            <option value="processing">Đang xử lý</option>
+                            <option value="shipping">Đang giao</option>
+                            <option value="completed">Hoàn thành</option>
+                            <option value="cancelled">Đã hủy</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Phương thức thanh toán:</strong> <span id="paymentMethod">-</span>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12">
+                        <strong>Ghi chú:</strong> <span id="orderNotes">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Items -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="fas fa-box"></i> Sản phẩm</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Hình ảnh</th>
+                                <th>Sản phẩm</th>
+                                <th>Giá</th>
+                                <th>Số lượng</th>
+                                <th>Thành tiền</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orderItemsTable">
+                            <!-- Order items will be loaded here -->
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="4" class="text-end"><strong>Tạm tính:</strong></td>
+                                <td><strong id="orderSubtotal">-</strong></td>
+                            </tr>
+                            <tr>
+                                <td colspan="4" class="text-end"><strong>Giảm giá:</strong></td>
+                                <td><strong id="orderDiscount">-</strong></td>
+                            </tr>
+                            <tr>
+                                <td colspan="4" class="text-end"><strong>Phí vận chuyển:</strong></td>
+                                <td><strong id="orderShipping">-</strong></td>
+                            </tr>
+                            <tr class="table-active">
+                                <td colspan="4" class="text-end"><strong>Tổng tiền:</strong></td>
+                                <td><strong class="text-danger fs-5" id="orderTotal">-</strong></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Customer & Shipping Info -->
+    <div class="col-md-4">
+        <!-- Customer Info -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="fas fa-user"></i> Khách hàng</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-2"><strong>Họ tên:</strong> <span id="customerName">-</span></p>
+                <p class="mb-2"><strong>Email:</strong> <span id="customerEmail">-</span></p>
+                <p class="mb-0"><strong>SĐT:</strong> <span id="customerPhone">-</span></p>
+            </div>
+        </div>
+
+        <!-- Shipping Address -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="fas fa-map-marker-alt"></i> Địa chỉ giao hàng</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-0" id="shippingAddress">
+                    -
+                </p>
+            </div>
+        </div>
+
+        <!-- Status History -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="fas fa-history"></i> Lịch sử trạng thái</h5>
+            </div>
+            <div class="card-body">
+                <div class="timeline" id="statusHistory">
+                    <!-- Status history will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Load order detail on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadOrderDetail(@orderId);
+        });
+
+        // Load order detail from API
+        function loadOrderDetail(orderId) {
+            fetch(`/Admin/GetOrderDetail/${orderId}`)
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        renderOrderDetail(result.data);
+                    } else {
+                        alert('Lỗi: ' + result.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading order detail:', error);
+                    alert('Không thể tải thông tin đơn hàng!');
+                });
+        }
+
+        // Render order detail
+        function renderOrderDetail(order) {
+            // Order info
+            document.getElementById('orderDate').textContent = order.orderDate;
+            document.getElementById('orderStatus').value = order.status;
+            document.getElementById('paymentMethod').textContent = order.paymentMethod;
+            document.getElementById('orderNotes').textContent = order.notes || 'Không có ghi chú';
+
+            // Customer info
+            document.getElementById('customerName').textContent = order.customer.name;
+            document.getElementById('customerEmail').textContent = order.customer.email;
+            document.getElementById('customerPhone').textContent = order.customer.phone;
+
+            // Shipping address
+            document.getElementById('shippingAddress').innerHTML = order.shippingAddress.replace(/,/g, ',<br>');
+
+            // Order items
+            const tbody = document.getElementById('orderItemsTable');
+            tbody.innerHTML = '';
+            order.items.forEach(item => {
+                const row = `
+                    <tr>
+                        <td>
+                            <img src="${item.image}" alt="${item.name}" style="width: 60px; height: 60px; object-fit: cover;" onerror="this.src='/images/HinhSanPhamUnisex/default.jpg'">
+                        </td>
+                        <td>
+                            <strong>${item.name}</strong>
+                            ${item.color ? '<br><small class="text-muted">Màu: ' + item.color + '</small>' : ''}
+                            ${item.size ? '<br><small class="text-muted">Size: ' + item.size + '</small>' : ''}
+                        </td>
+                        <td>${formatPrice(item.price)}</td>
+                        <td>${item.quantity}</td>
+                        <td><strong>${formatPrice(item.subtotal)}</strong></td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+
+            // Totals
+            document.getElementById('orderSubtotal').textContent = formatPrice(order.subtotal);
+            document.getElementById('orderDiscount').textContent = formatPrice(order.discountAmount);
+            document.getElementById('orderShipping').textContent = formatPrice(order.shippingFee);
+            document.getElementById('orderTotal').textContent = formatPrice(order.total);
+
+            // Status history
+            const historyDiv = document.getElementById('statusHistory');
+            historyDiv.innerHTML = '';
+            if (order.statusHistory && order.statusHistory.length > 0) {
+                order.statusHistory.forEach((history, index) => {
+                    const isLast = index === order.statusHistory.length - 1;
+                    const item = `
+                        <div class="timeline-item ${isLast ? '' : 'mb-3'}">
+                            <i class="fas fa-check-circle text-success"></i>
+                            <div class="timeline-content">
+                                <strong>${history.statusText}</strong>
+                                <small class="text-muted d-block">${history.date}</small>
+                            </div>
+                        </div>
+                    `;
+                    historyDiv.innerHTML += item;
+                });
+            }
+        }
+
+        // Format price
+        function formatPrice(price) {
+            return new Intl.NumberFormat('vi-VN').format(price) + '₫';
+        }
+
+        function updateOrderStatus(orderId, status) {
+            const statusText = {
+                'pending': 'Chờ xác nhận',
+                'processing': 'Đang xử lý',
+                'shipping': 'Đang giao',
+                'completed': 'Hoàn thành',
+                'cancelled': 'Đã hủy'
+            };
+
+            if (confirm(`Cập nhật trạng thái đơn hàng #${orderId} thành "${statusText[status]}"?`)) {
+                fetch('/Admin/UpdateOrderStatus', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `orderId=${orderId}&status=${status}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        // Reload order detail
+                        loadOrderDetail(orderId);
+                    } else {
+                        alert('Có lỗi xảy ra: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Có lỗi xảy ra khi cập nhật trạng thái!');
+                });
+            }
+        }
+    </script>
+    
+    <style>
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+        }
+        .timeline-item {
+            position: relative;
+            padding-bottom: 20px;
+        }
+        .timeline-item:last-child {
+            padding-bottom: 0;
+        }
+        .timeline-item i {
+            position: absolute;
+            left: -25px;
+            top: 2px;
+        }
+        .timeline-item:not(:last-child)::before {
+            content: '';
+            position: absolute;
+            left: -20px;
+            top: 20px;
+            width: 2px;
+            height: calc(100% - 10px);
+            background: #dee2e6;
+        }
+        .timeline-content {
+            margin-left: 10px;
+        }
+    </style>
+}
+
+

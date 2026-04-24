@@ -1,0 +1,14 @@
+@{
+    // Admin Login không cần layout (đã có HTML hoàn chỉnh)
+    if (ViewContext.RouteData.Values["Action"]?.ToString() == "Login")
+    {
+        Layout = null;
+    }
+    else
+    {
+        // Các trang Admin khác dùng _AdminLayout
+        Layout = "_AdminLayout";
+    }
+}
+
+

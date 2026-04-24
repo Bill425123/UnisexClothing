@@ -1,0 +1,683 @@
+@{
+    ViewData["Title"] = "Giỏ hàng";
+}
+
+<section class="py-5">
+    <div class="container">
+        <h2 class="mb-4 fw-bold">Giỏ hàng của bạn</h2>
+
+        <div class="row">
+            <!-- Cart Items -->
+            <div class="col-md-8">
+                <!-- Select All Option -->
+                <div class="mb-3 d-flex justify-content-between align-items-center">
+                    <label class="form-check-label fs-5 fw-bold">
+                        <input type="checkbox" class="form-check-input me-2" id="selectAll" onchange="toggleSelectAll(this)" style="width: 20px; height: 20px;">
+                        Chọn tất cả
+                    </label>
+                </div>
+                
+                <div class="card">
+                    <div class="card-body" id="cartItemsContainer">
+                        <!-- Loading... -->
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Continue Shopping Button -->
+                <div class="mt-3">
+                    <a asp-controller="Product" asp-action="Shop" class="btn btn-outline-dark">
+                        <i class="fas fa-arrow-left me-2"></i>Tiếp tục mua sắm
+                    </a>
+                </div>
+            </div>
+
+            <!-- Order Summary -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="fw-bold mb-4">Tóm tắt đơn hàng</h5>
+
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Tạm tính:</span>
+                            <span id="subtotal">0 ₫</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Vận chuyển:</span>
+                            <span id="shippingFeeCart">Đang tính...</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>VAT (10%):</span>
+                            <span id="vatCart">0 ₫</span>
+                        </div>
+
+                        <!-- Voucher Input -->
+                        <div class="mb-3">
+                            <div class="input-group mb-2">
+                                <input type="text" class="form-control" id="voucherCodeCart" placeholder="Nhập mã voucher" style="text-transform: uppercase;">
+                                <button class="btn btn-outline-dark" type="button" onclick="applyVoucherCart()" style="min-width: 100px;">
+                                    <i class="fas fa-check me-1"></i>Áp dụng
+                                </button>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">
+                                    <i class="fas fa-ticket-alt me-1"></i>
+                                    Có voucher từ vòng quay? Nhập mã tại đây!
+                                </small>
+                                <button type="button" class="btn btn-outline-dark btn-sm" onclick="showMyVouchersCart()" style="white-space: nowrap;">
+                                    <i class="fas fa-gift me-1"></i>Chọn voucher từ kho
+                                </button>
+                            </div>
+                            <div id="voucherMessageCart" class="mt-2"></div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Giảm giá (Voucher):</span>
+                            <span class="text-success fw-bold" id="discount">0 ₫</span>
+                        </div>
+
+                        <hr>
+
+                        <div class="d-flex justify-content-between mb-4">
+                            <span class="fw-bold">Tổng tiền:</span>
+                            <span class="fw-bold fs-5 text-danger" id="cartTotal">0 ₫</span>
+                        </div>
+
+                        <button type="button" class="btn btn-unistyle w-100" id="checkoutBtn" onclick="goToCheckout()" style="display: none; pointer-events: none;">
+                            <i class="fas fa-shopping-bag me-2"></i>Thanh toán
+                        </button>
+
+                        <hr>
+
+                        <div class="mt-3">
+                            <h6 class="fw-bold mb-3">Phương thức thanh toán</h6>
+                            <div class="d-flex flex-column gap-2">
+                                <div class="border p-2 rounded text-center">
+                                    <i class="fas fa-money-bill-wave fa-2x mb-2"></i>
+                                    <p class="mb-0">Thanh toán khi nhận hàng</p>
+                                </div>
+                                <div class="border p-2 rounded text-center">
+                                    <i class="fas fa-credit-card fa-2x mb-2"></i>
+                                    <p class="mb-0">Thẻ tín dụng/ghi nợ</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Modal Chọn Voucher -->
+<div class="modal fade" id="voucherModalCart" tabindex="-1" aria-labelledby="voucherModalCartLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="voucherModalCartLabel">
+                    <i class="fas fa-gift me-2"></i>Voucher của tôi
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="voucherListContainerCart">
+                    <!-- Vouchers will be loaded here -->
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Đang tải...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let appliedVoucherCart = null; // Global variable to store applied voucher
+
+        document.addEventListener("DOMContentLoaded", function () {
+            // Clear old checkout data when entering cart page
+            localStorage.removeItem('unistyleSelectedProducts');
+            localStorage.removeItem('unistyleOrderInfo');
+            
+            // Load saved voucher from MyVouchers page
+            loadSavedVoucher();
+            
+            loadCartItems();
+            
+            // Update cart badge when entering cart page
+            if (typeof window.updateCartBadge === 'function') {
+                window.updateCartBadge();
+            }
+        });
+
+        // Load voucher from localStorage if exists
+        function loadSavedVoucher() {
+            const savedVoucher = localStorage.getItem('appliedVoucher');
+            if (savedVoucher) {
+                try {
+                    appliedVoucherCart = JSON.parse(savedVoucher);
+                    document.getElementById('voucherCodeCart').value = appliedVoucherCart.code;
+                    document.getElementById('voucherMessageCart').innerHTML = `
+                        <div class="alert alert-success alert-sm">
+                            <i class="fas fa-check-circle me-1"></i>
+                            Đã áp dụng voucher: <strong>${appliedVoucherCart.name}</strong>
+                            <button class="btn btn-sm btn-link text-danger float-end p-0" onclick="removeVoucherCart()">Xóa</button>
+                        </div>`;
+                } catch (error) {
+                    console.error('Error loading saved voucher:', error);
+                    localStorage.removeItem('appliedVoucher');
+                }
+            }
+        }
+
+        async function loadCartItems() {
+            const container = document.getElementById("cartItemsContainer");
+            container.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+
+            try {
+                const response = await fetch('/Cart/GetCartItems');
+                const result = await response.json();
+
+                if (result.success) {
+                    const cartItems = result.data;
+                    if (cartItems.length === 0) {
+                        container.innerHTML = '<p class="text-center py-5">Giỏ hàng của bạn đang trống.</p>';
+                        document.getElementById("checkoutBtn").style.display = 'none';
+                        
+                        // Clear voucher if cart is empty
+                        appliedVoucherCart = null;
+                        document.getElementById('voucherCodeCart').value = '';
+                        document.getElementById('voucherMessageCart').innerHTML = '';
+                        localStorage.removeItem('appliedVoucher');
+                        
+                        return;
+                    }
+
+                    let html = '';
+
+                    cartItems.forEach((item, index) => {
+                        const priceWithVariant = item.salePrice + item.variantAdditionalPrice;
+                        const totalItemPrice = priceWithVariant * item.quantity;
+
+                        html += `
+                            <div class="cart-item d-flex align-items-center mb-3 border-bottom pb-3">
+                                <input type="checkbox" class="form-check-input me-3 cart-checkbox" 
+                                       style="width:20px; height:20px;" 
+                                       data-cart-id="${item.cartId}" 
+                                       data-price="${totalItemPrice}" 
+                                       onchange="updateCartTotal()"
+                                       checked>
+                                <img src="${item.productImage}" alt="${item.productName}" class="me-3" style="width:100px; height:100px; object-fit:cover; border-radius:8px;">
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-2 fw-bold">${item.productName}</h6>
+                                    ${item.variantColor ? `
+                                        <div class="d-flex gap-3 mb-2">
+                                            <span class="badge bg-secondary"><i class="fas fa-palette me-1"></i>Màu: ${item.variantColor}</span>
+                                            <span class="badge bg-secondary"><i class="fas fa-ruler me-1"></i>Size: ${item.variantSize}</span>
+                                        </div>
+                                    ` : ''}
+                                    <div class="d-flex align-items-center gap-2 mb-2">
+                                        <strong class="text-danger">${formatCurrency(priceWithVariant)}</strong>
+                                        ${item.variantAdditionalPrice > 0 ? `<small class="text-muted">(+${formatCurrency(item.variantAdditionalPrice)} phụ phí)</small>` : ''}
+                                    </div>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="quantity-control d-flex align-items-center border rounded">
+                                            <button class="btn btn-sm quantity-btn" onclick="decreaseQuantity(${item.cartId}, ${item.quantity}, ${item.stock})" 
+                                                    ${item.quantity <= 1 ? 'disabled' : ''}>
+                                                <i class="fas fa-minus"></i>
+                                            </button>
+                                            <input type="number" class="form-control form-control-sm text-center quantity-input" 
+                                                   value="${item.quantity}" min="1" max="${item.stock}" 
+                                                   onchange="updateQuantity(${item.cartId}, this.value, ${item.stock})" 
+                                                   style="width:60px; border:none;">
+                                            <button class="btn btn-sm quantity-btn" onclick="increaseQuantity(${item.cartId}, ${item.quantity}, ${item.stock})"
+                                                    ${item.quantity >= item.stock ? 'disabled' : ''}>
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </div>
+                                        <small class="text-muted">Còn ${item.stock} sản phẩm</small>
+                                    </div>
+                                </div>
+                                <div class="d-flex flex-column align-items-end gap-2">
+                                    <strong class="text-primary fs-5">${formatCurrency(totalItemPrice)}</strong>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="removeFromCart(${item.cartId})">
+                                        <i class="fas fa-trash me-1"></i>Xóa
+                                    </button>
+                                </div>
+                            </div>`;
+                    });
+
+                    container.innerHTML = html;
+
+                    // Cập nhật tổng tiền ban đầu (không có sản phẩm nào được chọn)
+                    updateCartTotal();
+
+                    // Hiển thị nút thanh toán
+                    const checkoutBtn = document.getElementById("checkoutBtn");
+                    checkoutBtn.style.display = 'block';
+                    checkoutBtn.style.pointerEvents = 'auto';
+                } else {
+                    container.innerHTML = `<p class="text-danger text-center">${result.message}</p>`;
+                }
+            } catch (error) {
+                container.innerHTML = `<p class="text-danger text-center">Lỗi tải giỏ hàng: ${error}</p>`;
+            }
+        }
+
+        function formatCurrency(number) {
+            return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(number);
+        }
+
+        async function removeFromCart(cartId) {
+            if (!confirm("Bạn có chắc muốn xóa sản phẩm này?")) return;
+
+            try {
+                const response = await fetch('/Cart/RemoveFromCart', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cartId })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    loadCartItems(); // load lại cart sau khi xóa (sẽ tự động xóa voucher nếu cart trống)
+                } else {
+                    alert(result.message);
+                }
+            } catch (error) {
+                alert("Lỗi xóa sản phẩm: " + error);
+            }
+        }
+
+        // Increase quantity
+        async function increaseQuantity(cartId, currentQuantity, stock) {
+            const newQuantity = currentQuantity + 1;
+            if (newQuantity > stock) {
+                alert(`Số lượng tồn kho không đủ! Chỉ còn ${stock} sản phẩm.`);
+                return;
+            }
+            await updateQuantity(cartId, newQuantity, stock);
+        }
+
+        // Decrease quantity
+        async function decreaseQuantity(cartId, currentQuantity, stock) {
+            const newQuantity = currentQuantity - 1;
+            if (newQuantity < 1) return;
+            await updateQuantity(cartId, newQuantity, stock);
+        }
+
+        // Update quantity
+        async function updateQuantity(cartId, quantity, stock) {
+            quantity = parseInt(quantity);
+            
+            if (quantity < 1) {
+                alert('Số lượng tối thiểu là 1!');
+                loadCartItems();
+                return;
+            }
+            
+            if (quantity > stock) {
+                alert(`Số lượng tồn kho không đủ! Chỉ còn ${stock} sản phẩm.`);
+                loadCartItems();
+                return;
+            }
+
+            try {
+                const response = await fetch('/Cart/UpdateQuantity', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cartId, quantity })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    loadCartItems(); // Reload cart to update all prices
+                } else {
+                    alert(result.message);
+                    loadCartItems();
+                }
+            } catch (error) {
+                alert("Lỗi cập nhật số lượng: " + error);
+                loadCartItems();
+            }
+        }
+
+        function goToCheckout() {
+            // Get selected items
+            const checkboxes = document.querySelectorAll('.cart-checkbox:checked');
+            
+            if (checkboxes.length === 0) {
+                alert('Vui lòng chọn ít nhất một sản phẩm để thanh toán!');
+                return;
+            }
+
+            // Get cart item data for selected items
+            const selectedCartIds = Array.from(checkboxes).map(cb => parseInt(cb.dataset.cartId));
+            
+            // Clear old data first
+            localStorage.removeItem('unistyleSelectedProducts');
+            
+            // Fetch full cart data and filter selected items
+            fetch('/Cart/GetCartItems')
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        const selectedItems = result.data.filter(item => selectedCartIds.includes(item.cartId));
+                        
+                        console.log('Selected Cart IDs:', selectedCartIds);
+                        console.log('Selected Items:', selectedItems);
+                        
+                        // Save selected items to localStorage for checkout page
+                        const checkoutItems = selectedItems.map(item => ({
+                            productId: item.productId,
+                            name: item.productName,
+                            image: item.productImage,
+                            price: item.salePrice + item.variantAdditionalPrice,
+                            quantity: item.quantity,
+                            color: item.variantColor,
+                            size: item.variantSize
+                        }));
+                        
+                        console.log('Checkout Items to save:', checkoutItems);
+                        localStorage.setItem('unistyleSelectedProducts', JSON.stringify(checkoutItems));
+                        window.location.href = '/Checkout';
+                    } else {
+                        alert('Không thể tải thông tin giỏ hàng!');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Có lỗi xảy ra!');
+                });
+        }
+
+        // Toggle select all checkbox
+        function toggleSelectAll(source) {
+            const checkboxes = document.querySelectorAll('.cart-checkbox');
+            checkboxes.forEach(cb => cb.checked = source.checked);
+            updateCartTotal();
+        }
+
+        // Update cart total based on selected items
+        async function updateCartTotal() {
+            const checkboxes = document.querySelectorAll('.cart-checkbox');
+            let subtotal = 0;
+            let selectedCount = 0;
+
+            checkboxes.forEach(cb => {
+                if (cb.checked) {
+                    subtotal += parseFloat(cb.dataset.price);
+                    selectedCount++;
+                }
+            });
+
+            // Clear voucher if no products selected
+            if (selectedCount === 0 && appliedVoucherCart) {
+                appliedVoucherCart = null;
+                document.getElementById('voucherCodeCart').value = '';
+                document.getElementById('voucherMessageCart').innerHTML = '';
+                localStorage.removeItem('appliedVoucher');
+            }
+
+            // Calculate discount from applied voucher
+            let discount = 0;
+            if (appliedVoucherCart && subtotal > 0) {
+                if (appliedVoucherCart.type === 'amount') {
+                    discount = appliedVoucherCart.value;
+                } else if (appliedVoucherCart.type === 'percent') {
+                    discount = Math.round(subtotal * (appliedVoucherCart.value / 100));
+                }
+                discount = Math.min(discount, subtotal); // Don't exceed subtotal
+            }
+
+            // Calculate shipping fee
+            let shippingFee = 0;
+            let vatAmount = 0;
+            
+            if (subtotal > 0) {
+                try {
+                    // Get shipping fee from API
+                    const shipResponse = await fetch(`/Checkout/CalculateShippingFee?orderAmount=${subtotal}`);
+                    const shipResult = await shipResponse.json();
+                    
+                    if (shipResult.success) {
+                        shippingFee = shipResult.fee;
+                        const shipElement = document.getElementById('shippingFeeCart');
+                        if (shipResult.isFree) {
+                            shipElement.innerHTML = '<span class="text-success">Miễn phí</span>';
+                        } else {
+                            shipElement.innerText = formatCurrency(shippingFee);
+                        }
+                    }
+
+                    // Get VAT percentage from API
+                    const vatResponse = await fetch('/Checkout/GetVAT');
+                    const vatResult = await vatResponse.json();
+                    
+                    if (vatResult.success) {
+                        const vatPercentage = vatResult.percentage || 10;
+                        const baseAmount = subtotal + shippingFee;
+                        vatAmount = Math.round(baseAmount * (vatPercentage / 100));
+                        document.getElementById('vatCart').innerText = formatCurrency(vatAmount);
+                    }
+                } catch (error) {
+                    console.error('Error calculating fees:', error);
+                    shippingFee = 30000;
+                    vatAmount = Math.round((subtotal + shippingFee) * 0.1);
+                    document.getElementById('shippingFeeCart').innerText = formatCurrency(shippingFee);
+                    document.getElementById('vatCart').innerText = formatCurrency(vatAmount);
+                }
+            } else {
+                document.getElementById('shippingFeeCart').innerText = '0 ₫';
+                document.getElementById('vatCart').innerText = '0 ₫';
+            }
+
+            const total = Math.max(0, subtotal + shippingFee + vatAmount - discount);
+
+            document.getElementById("subtotal").innerText = formatCurrency(subtotal);
+            document.getElementById("discount").innerText = formatCurrency(discount);
+            document.getElementById("cartTotal").innerText = formatCurrency(total);
+
+            // Update select all checkbox state
+            const selectAllCheckbox = document.getElementById('selectAll');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            const someChecked = Array.from(checkboxes).some(cb => cb.checked);
+            selectAllCheckbox.checked = allChecked;
+            selectAllCheckbox.indeterminate = someChecked && !allChecked;
+
+            // Enable/disable checkout button
+            const checkoutBtn = document.getElementById('checkoutBtn');
+            if (selectedCount > 0) {
+                checkoutBtn.style.pointerEvents = 'auto';
+                checkoutBtn.style.opacity = '1';
+            } else {
+                checkoutBtn.style.pointerEvents = 'none';
+                checkoutBtn.style.opacity = '0.5';
+            }
+        }
+
+        // Apply voucher in Cart
+        async function applyVoucherCart() {
+            const voucherCode = document.getElementById('voucherCodeCart').value.trim().toUpperCase();
+            const messageDiv = document.getElementById('voucherMessageCart');
+
+            if (!voucherCode) {
+                messageDiv.innerHTML = '<div class="alert alert-warning alert-sm">Vui lòng nhập mã voucher!</div>';
+                return;
+            }
+
+            // Check if any product is selected
+            const checkboxes = document.querySelectorAll('.cart-checkbox');
+            const hasSelected = Array.from(checkboxes).some(cb => cb.checked);
+            
+            if (!hasSelected) {
+                messageDiv.innerHTML = '<div class="alert alert-warning alert-sm"><i class="fas fa-exclamation-triangle me-1"></i>Vui lòng chọn sản phẩm trước khi áp dụng voucher!</div>';
+                return;
+            }
+
+            try {
+                const response = await fetch('/Cart/ValidateVoucher?code=' + voucherCode);
+                const result = await response.json();
+
+                if (result.success) {
+                    appliedVoucherCart = result.voucher;
+                    
+                    // Save to localStorage to transfer to Checkout
+                    localStorage.setItem('appliedVoucher', JSON.stringify(result.voucher));
+                    
+                    messageDiv.innerHTML = `
+                        <div class="alert alert-success alert-sm">
+                            <i class="fas fa-check-circle me-1"></i>
+                            Đã áp dụng voucher: <strong>${result.voucher.name}</strong>
+                            <button class="btn btn-sm btn-link text-danger float-end p-0" onclick="removeVoucherCart()">Xóa</button>
+                        </div>`;
+                    await updateCartTotal();
+                } else {
+                    messageDiv.innerHTML = `<div class="alert alert-danger alert-sm"><i class="fas fa-times-circle me-1"></i>${result.message}</div>`;
+                    appliedVoucherCart = null;
+                    localStorage.removeItem('appliedVoucher');
+                }
+            } catch (error) {
+                messageDiv.innerHTML = '<div class="alert alert-danger alert-sm">Lỗi khi kiểm tra voucher!</div>';
+                console.error('Error:', error);
+            }
+        }
+
+        // Remove applied voucher in Cart
+        async function removeVoucherCart() {
+            appliedVoucherCart = null;
+            document.getElementById('voucherCodeCart').value = '';
+            document.getElementById('voucherMessageCart').innerHTML = '';
+            localStorage.removeItem('appliedVoucher'); // Clear from localStorage
+            await updateCartTotal();
+        }
+
+        // Show My Vouchers Modal
+        async function showMyVouchersCart() {
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('voucherModalCart'));
+            modal.show();
+            
+            // Load vouchers
+            await loadMyVouchersCart();
+        }
+
+        // Load My Vouchers from API
+        async function loadMyVouchersCart() {
+            const container = document.getElementById('voucherListContainerCart');
+            
+            try {
+                const response = await fetch('/Cart/GetMyVouchers');
+                const result = await response.json();
+                
+                if (result.success && result.vouchers && result.vouchers.length > 0) {
+                    let html = '<div class="row g-3">';
+                    
+                    result.vouchers.forEach(voucher => {
+                        const expiryDate = voucher.expiryDate ? new Date(voucher.expiryDate).toLocaleDateString('vi-VN') : 'N/A';
+                        const valueDisplay = voucher.type === 'percent' 
+                            ? `${voucher.value}%` 
+                            : formatPrice(voucher.value);
+                        
+                        html += `
+                            <div class="col-12">
+                                <div class="card voucher-card" style="cursor: pointer; transition: all 0.3s;" 
+                                     onmouseover="this.style.transform='scale(1.02)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)';" 
+                                     onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='';"
+                                     onclick="selectVoucherCart('${voucher.code}', '${voucher.name}', ${voucher.value}, '${voucher.type}', '${voucher.expiryDate}')">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-3 text-center border-end">
+                                                <div class="text-primary" style="font-size: 2rem;">
+                                                    <i class="fas fa-ticket-alt"></i>
+                                                </div>
+                                                <div class="fw-bold text-danger mt-2" style="font-size: 1.2rem;">
+                                                    ${valueDisplay}
+                                                </div>
+                                            </div>
+                                            <div class="col-7">
+                                                <h6 class="fw-bold mb-1">${voucher.name || 'Voucher'}</h6>
+                                                <p class="text-muted small mb-1">
+                                                    <i class="fas fa-barcode me-1"></i>Mã: <strong>${voucher.code}</strong>
+                                                </p>
+                                                <p class="text-muted small mb-0">
+                                                    <i class="fas fa-calendar me-1"></i>HSD: ${expiryDate}
+                                                </p>
+                                            </div>
+                                            <div class="col-2 text-center">
+                                                <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); selectVoucherCart('${voucher.code}', '${voucher.name}', ${voucher.value}, '${voucher.type}', '${voucher.expiryDate}')">
+                                                    Chọn
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+                    container.innerHTML = html;
+                } else {
+                    container.innerHTML = `
+                        <div class="text-center py-5">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">Bạn chưa có voucher nào trong kho.</p>
+                            <p class="text-muted small">Hãy tham gia vòng quay may mắn để nhận voucher!</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading vouchers:', error);
+                container.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Không thể tải danh sách voucher. Vui lòng thử lại!
+                    </div>
+                `;
+            }
+        }
+
+        // Select Voucher from List
+        async function selectVoucherCart(code, name, value, type, expiryDate) {
+            // Close modal
+            const modalElement = document.getElementById('voucherModalCart');
+            const modal = bootstrap.Modal.getInstance(modalElement);
+            if (modal) {
+                modal.hide();
+            }
+            
+            // Set voucher data
+            appliedVoucherCart = {
+                code: code,
+                name: name,
+                value: value,
+                type: type,
+                expiryDate: expiryDate
+            };
+            
+            // Update UI
+            document.getElementById('voucherCodeCart').value = code;
+            
+            // Save to localStorage
+            localStorage.setItem('appliedVoucher', JSON.stringify(appliedVoucherCart));
+            
+            // Show success message
+            const messageDiv = document.getElementById('voucherMessageCart');
+            messageDiv.innerHTML = `
+                <div class="alert alert-success alert-sm">
+                    <i class="fas fa-check-circle me-1"></i>
+                    Đã áp dụng voucher: <strong>${name}</strong>
+                    <button class="btn btn-sm btn-link text-danger float-end p-0" onclick="removeVoucherCart()">Xóa</button>
+                </div>`;
+            
+            // Recalculate totals
+            await updateCartTotal();
+        }
+    </script>
+}

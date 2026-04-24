@@ -1,0 +1,247 @@
+@model IEnumerable<UnisexClothes.Models.Order>
+@{
+    ViewData["Title"] = "Đơn hàng của tôi";
+    
+    string GetStatusBadgeClass(string? status)
+    {
+        return status?.ToLower() switch
+        {
+            "pending" => "bg-warning text-dark",
+            "processing" => "bg-info",
+            "shipping" => "bg-primary",
+            "delivered" => "bg-success",
+            "completed" => "bg-success",
+            "cancelled" => "bg-secondary",
+            _ => "bg-secondary"
+        };
+    }
+    
+    string GetStatusText(string? status)
+    {
+        return status?.ToLower() switch
+        {
+            "pending" => "Chờ xử lý",
+            "processing" => "Đang xử lý",
+            "shipping" => "Đang giao hàng",
+            "delivered" => "Đã giao hàng",
+            "completed" => "Hoàn thành",
+            "cancelled" => "Đã hủy",
+            _ => "Không xác định"
+        };
+    }
+
+    string GetStatusKey(string? status)
+    {
+        if (string.IsNullOrWhiteSpace(status))
+            return "other";
+
+        var normalized = status.Trim().ToLowerInvariant();
+
+        return normalized switch
+        {
+            "pending" => "pending",
+            "processing" => "pending",
+            "chờ xử lý" => "pending",
+            "đang xử lý" => "pending",
+            "shipping" => "shipping",
+            "đang giao" => "shipping",
+            "completed" => "completed",
+            "delivered" => "completed",
+            "đã giao" => "completed",
+            "đã giao hàng" => "completed",
+            "cancelled" => "cancelled",
+            "canceled" => "cancelled",
+            "đã hủy" => "cancelled",
+            "da huy" => "cancelled",
+            _ => "other"
+        };
+    }
+}
+
+@section Styles {
+    <style>
+        .order-filter-group {
+            display: inline-flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+            background-color: #f8f9fa;
+            padding: 8px;
+            border-radius: 999px;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .order-filter-group .btn {
+            border-radius: 999px;
+            border: none;
+            padding: 0.45rem 1rem;
+            font-weight: 600;
+            color: #495057;
+            background: transparent;
+            transition: all 0.2s ease;
+        }
+
+        .order-filter-group .btn:hover {
+            color: #000;
+            background-color: rgba(0, 0, 0, 0.04);
+        }
+
+        .order-filter-group .btn.active {
+            background: linear-gradient(135deg, #1f1f1f 0%, #3d3d3d 100%);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+    </style>
+}
+
+<section class="py-5">
+    <div class="container">
+        <h2 class="mb-4 fw-bold">Đơn hàng của tôi</h2>
+
+        @if (!Model.Any())
+        {
+            <div class="alert alert-info text-center py-5">
+                <i class="fas fa-shopping-bag fa-3x mb-3 text-muted"></i>
+                <h4>Chưa có đơn hàng nào</h4>
+                <p class="text-muted">Bạn chưa có đơn hàng nào. Hãy bắt đầu mua sắm ngay!</p>
+                <a asp-controller="Product" asp-action="Shop" class="btn btn-dark mt-3">
+                    <i class="fas fa-shopping-cart me-2"></i>Mua sắm ngay
+                </a>
+            </div>
+        }
+        else
+        {
+            <!-- Filter -->
+            <div class="row mb-4">
+                <div class="col-lg-7">
+                    <div class="order-filter-group" role="group">
+                        <input type="radio" class="btn-check" name="statusFilter" id="all" value="all" checked>
+                        <label class="btn active" for="all">Tất cả</label>
+
+                        <input type="radio" class="btn-check" name="statusFilter" id="pending" value="pending">
+                        <label class="btn" for="pending">Chờ xử lý</label>
+
+                        <input type="radio" class="btn-check" name="statusFilter" id="shipping" value="shipping">
+                        <label class="btn" for="shipping">Đang giao</label>
+
+                        <input type="radio" class="btn-check" name="statusFilter" id="completed" value="completed">
+                        <label class="btn" for="completed">Hoàn thành</label>
+
+                        <input type="radio" class="btn-check" name="statusFilter" id="cancelled" value="cancelled">
+                        <label class="btn" for="cancelled">Đã hủy</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Orders List -->
+            <div class="row">
+                <div class="col-12">
+                    @foreach (var order in Model)
+                    {
+                        var firstProduct = order.OrderDetails.FirstOrDefault()?.Product;
+                        var productImage = firstProduct?.ProductImage ?? "/images/HinhSanPhamUnisex/default.jpg";
+                        var productCount = order.OrderDetails.Count;
+                        var statusKey = GetStatusKey(order.OrderStatus);
+                        
+                        <div class="order-card" data-status="@statusKey">
+                            <div class="row align-items-center">
+                                <div class="col-md-2 text-center mb-3 mb-md-0">
+                                    <img src="@productImage" class="img-fluid rounded" alt="Product" style="max-height: 120px; width: auto;" onerror="this.src='/images/HinhSanPhamUnisex/default.jpg'">
+                                </div>
+                                <div class="col-md-4 mb-3 mb-md-0">
+                                    <h5 class="fw-bold mb-2">Đơn hàng #@order.OrderId</h5>
+                                    <p class="text-muted mb-1">Ngày đặt: @order.OrderDate?.ToString("dd/MM/yyyy")</p>
+                                    <p class="text-muted mb-0">
+                                        <i class="fas fa-map-marker-alt me-1"></i>
+                                        Giao đến: @order.ShippingAddress
+                                    </p>
+                                </div>
+                                <div class="col-md-2 mb-3 mb-md-0">
+                                    <p class="mb-1">
+                                        <strong>Sản phẩm:</strong> @productCount
+                                    </p>
+                                    <p class="mb-0">
+                                        <strong>Thành tiền:</strong>
+                                        <span class="text-danger">@order.TotalAmount.ToString("#,##0") ₫</span>
+                                    </p>
+                                </div>
+                                <div class="col-md-2 mb-3 mb-md-0 text-center">
+                                    <span class="badge badge-status @GetStatusBadgeClass(order.OrderStatus)">
+                                        @GetStatusText(order.OrderStatus)
+                                    </span>
+                                </div>
+                                <div class="col-md-2 text-center">
+                                    <a href="@Url.Action("OrderDetail", "Account", new { id = order.OrderId })" class="btn btn-outline-dark btn-sm mb-2 w-100">
+                                        <i class="fas fa-eye me-1"></i>Xem chi tiết
+                                    </a>
+                                    @if (order.OrderStatus?.ToLower() == "delivered" || order.OrderStatus?.ToLower() == "completed")
+                                    {
+                                        <button class="btn btn-outline-primary btn-sm w-100" onclick="alert('Tính năng đánh giá đang được phát triển')">
+                                            <i class="fas fa-star me-1"></i>Đánh giá
+                                        </button>
+                                    }
+                                    else if (order.OrderStatus?.ToLower() == "pending")
+                                    {
+                                        <button class="btn btn-outline-danger btn-sm w-100" onclick="if(confirm('Bạn có chắc muốn hủy đơn hàng này?')) { alert('Tính năng hủy đơn đang được phát triển'); }">
+                                            <i class="fas fa-times me-1"></i>Hủy đơn
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</section>
+
+@section Scripts {
+    <script>
+        // Filter functionality
+        const statusRadios = document.querySelectorAll('input[name="statusFilter"]');
+        const filterLabels = document.querySelectorAll('.order-filter-group .btn');
+
+        function updateActiveLabel(selectedId) {
+            filterLabels.forEach(label => {
+                label.classList.toggle('active', label.getAttribute('for') === selectedId);
+            });
+        }
+
+        statusRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                const filterValue = this.value;
+                const orders = document.querySelectorAll('.order-card');
+
+                updateActiveLabel(this.id);
+                
+                orders.forEach(order => {
+                    const orderStatus = order.getAttribute('data-status');
+                    let shouldShow = false;
+
+                    switch (filterValue) {
+                        case 'all':
+                            shouldShow = true;
+                            break;
+                        case 'pending':
+                            shouldShow = orderStatus === 'pending';
+                            break;
+                        case 'shipping':
+                            shouldShow = orderStatus === 'shipping';
+                            break;
+                        case 'completed':
+                            shouldShow = orderStatus === 'completed';
+                            break;
+                        case 'cancelled':
+                            shouldShow = orderStatus === 'cancelled';
+                            break;
+                        default:
+                            shouldShow = false;
+                    }
+
+                    order.style.display = shouldShow ? '' : 'none';
+                });
+            });
+        });
+    </script>
+}
+

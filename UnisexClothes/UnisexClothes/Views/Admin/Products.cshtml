@@ -1,0 +1,312 @@
+@{
+    ViewData["Title"] = "Quản lý Sản phẩm";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <h2><i class="fas fa-box"></i> Quản lý Sản phẩm</h2>
+        <p class="text-muted">Danh sách tất cả sản phẩm</p>
+    </div>
+    <div class="col-md-6 text-end">
+        <a asp-controller="Admin" asp-action="ProductEdit" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Thêm sản phẩm mới
+        </a>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <input type="text" class="form-control" placeholder="Tìm kiếm sản phẩm..." id="searchProduct">
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" id="filterCategory">
+                    <option value="">Tất cả danh mục</option>
+                    <option value="1">Áo</option>
+                    <option value="2">Quần</option>
+                    <option value="3">Phụ kiện</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" id="filterStatus">
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="active">Đang bán</option>
+                    <option value="inactive">Tạm ngừng</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-secondary w-100" onclick="filterProducts()">
+                    <i class="fas fa-filter"></i> Lọc
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Products Table -->
+<div class="card border-0 shadow-sm">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">Danh sách sản phẩm</h5>
+            <span class="text-muted" id="productCount">Đang tải...</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th width="80">Hình</th>
+                        <th>Tên sản phẩm</th>
+                        <th>Danh mục</th>
+                        <th>Giá</th>
+                        <th>Giảm giá</th>
+                        <th>Tồn kho</th>
+                        <th>Trạng thái</th>
+                        <th width="150">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="productsTable">
+                    <!-- Products will be loaded here -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <nav class="mt-3">
+            <ul class="pagination justify-content-center" id="productPagination">
+                <li class="page-item disabled"><a class="page-link" href="#">Trước</a></li>
+                <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                <li class="page-item"><a class="page-link" href="#">2</a></li>
+                <li class="page-item"><a class="page-link" href="#">Sau</a></li>
+            </ul>
+        </nav>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Load products from database
+        let products = [];
+        let currentPage = 1;
+        let pageSize = 8;
+        let paginationInfo = null;
+        let currentFilters = {
+            search: '',
+            category: '',
+            status: ''
+        };
+        
+        // Load products when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadProducts();
+            
+            // Add Enter key listener for search input
+            const searchInput = document.getElementById('searchProduct');
+            if (searchInput) {
+                searchInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        filterProducts();
+                    }
+                });
+            }
+        });
+
+        // Load products from API with pagination and filters
+        function loadProducts(page = 1) {
+            currentPage = page;
+            
+            // Build query string with filters
+            const params = new URLSearchParams({
+                page: page,
+                pageSize: pageSize
+            });
+            
+            if (currentFilters.search) params.append('search', currentFilters.search);
+            if (currentFilters.category) params.append('category', currentFilters.category);
+            if (currentFilters.status) params.append('status', currentFilters.status);
+            
+            fetch(`/Admin/GetProducts?${params.toString()}`)
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        products = result.data;
+                        paginationInfo = result.pagination;
+                        renderProducts(products);
+                        renderPagination(paginationInfo);
+                        updateProductCount(paginationInfo);
+                    } else {
+                        alert('Lỗi: ' + result.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading products:', error);
+                    alert('Không thể tải danh sách sản phẩm!');
+                });
+        }
+
+        // Update product count display
+        function updateProductCount(pagination) {
+            const countElement = document.getElementById('productCount');
+            if (countElement && pagination) {
+                const start = (pagination.currentPage - 1) * pagination.pageSize + 1;
+                const end = Math.min(pagination.currentPage * pagination.pageSize, pagination.totalCount);
+                countElement.textContent = `Hiển thị ${start}-${end} của ${pagination.totalCount} sản phẩm`;
+            }
+        }
+
+        // Render products to table
+        function renderProducts(productsToRender) {
+            const tbody = document.getElementById('productsTable');
+            tbody.innerHTML = '';
+
+            if (!productsToRender || productsToRender.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center">Không có sản phẩm nào</td></tr>';
+                return;
+            }
+
+            productsToRender.forEach(product => {
+                const discountedPrice = product.price * (1 - product.discount / 100);
+                const statusBadge = product.status === 'active' 
+                    ? '<span class="badge bg-success">Đang bán</span>' 
+                    : '<span class="badge bg-secondary">Tạm ngừng</span>';
+                
+                const row = `
+                    <tr>
+                        <td><img src="${product.image}" alt="${product.name}" class="img-thumbnail" style="width: 60px; height: 60px; object-fit: cover;"></td>
+                        <td><strong>${product.name}</strong></td>
+                        <td>${product.category}</td>
+                        <td>
+                            <span class="text-decoration-line-through text-muted">${product.price.toLocaleString('vi-VN')}₫</span><br>
+                            <strong class="text-danger">${discountedPrice.toLocaleString('vi-VN')}₫</strong>
+                        </td>
+                        <td><span class="badge bg-danger">${product.discount}%</span></td>
+                        <td>${product.stock}</td>
+                        <td>${statusBadge}</td>
+                        <td>
+                            <a href="/Admin/ProductEdit/${product.id}" class="btn btn-sm btn-outline-primary" title="Sửa">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteProduct(${product.id})" title="Xóa">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+        }
+
+        function deleteProduct(id) {
+            if (!confirm('Bạn có chắc chắn muốn xóa sản phẩm này?')) {
+                return;
+            }
+
+            // Call API to delete
+            fetch('/Admin/ProductDelete?id=' + id, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert(result.message);
+                    // Reload products list
+                    loadProducts();
+                } else {
+                    alert('Lỗi: ' + result.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting product:', error);
+                alert('Không thể xóa sản phẩm!');
+            });
+        }
+
+        // Filter products
+        function filterProducts() {
+            // Get filter values
+            currentFilters.search = document.getElementById('searchProduct').value.trim();
+            currentFilters.category = document.getElementById('filterCategory').value;
+            currentFilters.status = document.getElementById('filterStatus').value;
+            
+            // Reset to page 1 when filtering
+            currentPage = 1;
+            
+            // Reload products with filters
+            loadProducts(1);
+        }
+
+        // Render pagination
+        function renderPagination(pagination) {
+            const container = document.getElementById('productPagination');
+            if (!pagination || pagination.totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+
+            let paginationHTML = '';
+            
+            // Previous button
+            if (pagination.hasPrevious) {
+                paginationHTML += `<li class="page-item"><a class="page-link" href="#" onclick="changePage(${pagination.currentPage - 1}); return false;">Trước</a></li>`;
+            } else {
+                paginationHTML += '<li class="page-item disabled"><a class="page-link" href="#">Trước</a></li>';
+            }
+
+            // Page numbers
+            const maxPages = 5;
+            let startPage = Math.max(1, pagination.currentPage - Math.floor(maxPages / 2));
+            let endPage = Math.min(pagination.totalPages, startPage + maxPages - 1);
+            
+            if (endPage - startPage < maxPages - 1) {
+                startPage = Math.max(1, endPage - maxPages + 1);
+            }
+
+            if (startPage > 1) {
+                paginationHTML += `<li class="page-item"><a class="page-link" href="#" onclick="changePage(1); return false;">1</a></li>`;
+                if (startPage > 2) {
+                    paginationHTML += '<li class="page-item disabled"><a class="page-link" href="#">...</a></li>';
+                }
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                if (i === pagination.currentPage) {
+                    paginationHTML += `<li class="page-item active"><a class="page-link" href="#">${i}</a></li>`;
+                } else {
+                    paginationHTML += `<li class="page-item"><a class="page-link" href="#" onclick="changePage(${i}); return false;">${i}</a></li>`;
+                }
+            }
+
+            if (endPage < pagination.totalPages) {
+                if (endPage < pagination.totalPages - 1) {
+                    paginationHTML += '<li class="page-item disabled"><a class="page-link" href="#">...</a></li>';
+                }
+                paginationHTML += `<li class="page-item"><a class="page-link" href="#" onclick="changePage(${pagination.totalPages}); return false;">${pagination.totalPages}</a></li>`;
+            }
+
+            // Next button
+            if (pagination.hasNext) {
+                paginationHTML += `<li class="page-item"><a class="page-link" href="#" onclick="changePage(${pagination.currentPage + 1}); return false;">Sau</a></li>`;
+            } else {
+                paginationHTML += '<li class="page-item disabled"><a class="page-link" href="#">Sau</a></li>';
+            }
+
+            container.innerHTML = paginationHTML;
+        }
+
+        // Change page
+        function changePage(page) {
+            loadProducts(page);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Load on page load
+        loadProducts();
+    </script>
+}
+
+

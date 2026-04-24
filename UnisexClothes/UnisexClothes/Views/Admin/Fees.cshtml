@@ -1,0 +1,363 @@
+@{
+    ViewData["Title"] = "Quản lý Phí";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <h2><i class="fas fa-dollar-sign"></i> Quản lý Phí</h2>
+        <p class="text-muted">Quản lý các loại phí vận chuyển, VAT, COD...</p>
+    </div>
+    <div class="col-md-6 text-end">
+        <button class="btn btn-primary" onclick="showAddModal()">
+            <i class="fas fa-plus"></i> Thêm phí mới
+        </button>
+    </div>
+</div>
+
+<!-- Fees Table -->
+<div class="card border-0 shadow-sm">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>Tên phí</th>
+                        <th>Giá trị</th>
+                        <th>Ngưỡng</th>
+                        <th>Mô tả</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="feesTableBody">
+                    <tr>
+                        <td colspan="6" class="text-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Đang tải...</span>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Fee Modal -->
+<div class="modal fade" id="feeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="feeModalTitle">Thêm phí mới</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="feeForm">
+                    <input type="hidden" id="feedId" value="0">
+                    
+                    <div class="mb-3">
+                        <label for="feeName" class="form-label">Tên phí <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="feeName" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="feeValue" class="form-label">Giá trị <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="feeValue" step="0.01" required>
+                        <small class="text-muted">Nhập số tiền (VD: 30000) hoặc phần trăm (VD: 10 cho 10%)</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="feeThreshold" class="form-label">Ngưỡng áp dụng</label>
+                        <input type="number" class="form-control" id="feeThreshold" step="0.01">
+                        <small class="text-muted">Giá trị đơn hàng tối thiểu/tối đa (để trống nếu không có)</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="feeDescription" class="form-label">Mô tả</label>
+                        <textarea class="form-control" id="feeDescription" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" onclick="saveFee()">Lưu</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <style>
+        /* 🔧 CRITICAL FIX: Backdrop pointer-events */
+        .modal-backdrop {
+            pointer-events: none !important;
+        }
+        .modal-backdrop.show {
+            pointer-events: none !important;
+        }
+    </style>
+    
+    <script>
+        let feeModal;
+
+        // 🔧 CRITICAL FIX: MutationObserver to fix backdrop pointer-events immediately
+        const backdropObserver = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                mutation.addedNodes.forEach(function(node) {
+                    if (node.classList && node.classList.contains('modal-backdrop')) {
+                        node.style.pointerEvents = 'none';
+                        console.log('🔧 Fixed backdrop pointer-events immediately');
+                    }
+                });
+            });
+        });
+        backdropObserver.observe(document.body, { childList: true });
+        console.log('👁️ MutationObserver watching for backdrop additions...');
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // 🔧 CRITICAL FIX: Fix backdrops on page load
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            backdrops.forEach(backdrop => {
+                backdrop.style.pointerEvents = 'none';
+            });
+            
+            feeModal = new bootstrap.Modal(document.getElementById('feeModal'));
+            loadFees();
+            
+            // 🔧 CRITICAL FIX: Add event listeners to fee modal
+            const feeModalElement = document.getElementById('feeModal');
+            if (feeModalElement) {
+                feeModalElement.addEventListener('show.bs.modal', function() {
+                    const backdrops = document.querySelectorAll('.modal-backdrop');
+                    backdrops.forEach(backdrop => {
+                        backdrop.style.pointerEvents = 'none';
+                    });
+                    console.log('🔧 Before modal show: Fixed backdrop pointer-events');
+                });
+                
+                feeModalElement.addEventListener('shown.bs.modal', function() {
+                    const backdrops = document.querySelectorAll('.modal-backdrop');
+                    backdrops.forEach(backdrop => {
+                        backdrop.style.pointerEvents = 'none';
+                    });
+                    console.log('🔧 After modal shown: Fixed backdrop pointer-events');
+                });
+            }
+        });
+
+        function loadFees() {
+            fetch('/Admin/GetFees')
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        renderFees(result.data);
+                    } else {
+                        document.getElementById('feesTableBody').innerHTML = 
+                            '<tr><td colspan="6" class="text-center text-danger">Lỗi tải dữ liệu</td></tr>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('feesTableBody').innerHTML = 
+                        '<tr><td colspan="6" class="text-center text-danger">Lỗi tải dữ liệu</td></tr>';
+                });
+        }
+
+        function renderFees(fees) {
+            const tbody = document.getElementById('feesTableBody');
+            
+            if (!fees || fees.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Chưa có phí nào</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = fees.map(fee => {
+                const valueDisplay = formatFeeValue(fee.value);
+                const thresholdDisplay = fee.threshold ? formatPrice(fee.threshold) + '₫' : '<span class="text-muted">-</span>';
+                
+                return `
+                    <tr>
+                        <td>${fee.id}</td>
+                        <td><strong>${fee.name}</strong></td>
+                        <td>${valueDisplay}</td>
+                        <td>${thresholdDisplay}</td>
+                        <td>${fee.description || '<span class="text-muted">-</span>'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="editFee(${fee.id})">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteFee(${fee.id}, '${fee.name}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function formatFeeValue(value) {
+            if (value === null || value === undefined) return '<span class="text-muted">-</span>';
+            
+            // Nếu giá trị nhỏ (có thể là %)
+            if (value < 100) {
+                return `<span class="badge bg-info">${value}%</span>`;
+            }
+            // Nếu giá trị lớn (tiền)
+            return `<span class="badge bg-success">${formatPrice(value)}₫</span>`;
+        }
+
+        function formatPrice(price) {
+            return new Intl.NumberFormat('vi-VN').format(price);
+        }
+
+        function showAddModal() {
+            document.getElementById('feeModalTitle').textContent = 'Thêm phí mới';
+            document.getElementById('feeForm').reset();
+            document.getElementById('feedId').value = '0';
+            
+            // 🔧 CRITICAL FIX: Pre-set backdrop pointer-events before modal shows
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            backdrops.forEach(backdrop => {
+                backdrop.style.pointerEvents = 'none';
+            });
+            console.log('🔧 Pre-set backdrop pointer-events to none');
+            
+            feeModal.show();
+        }
+
+        function editFee(id) {
+            fetch('/Admin/GetFees')
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        const fee = result.data.find(f => f.id === id);
+                        if (fee) {
+                            document.getElementById('feeModalTitle').textContent = 'Sửa phí';
+                            document.getElementById('feedId').value = fee.id;
+                            document.getElementById('feeName').value = fee.name || '';
+                            document.getElementById('feeValue').value = fee.value || '';
+                            document.getElementById('feeThreshold').value = fee.threshold || '';
+                            document.getElementById('feeDescription').value = fee.description || '';
+                            
+                            // 🔧 CRITICAL FIX: Pre-set backdrop pointer-events before modal shows
+                            const backdrops = document.querySelectorAll('.modal-backdrop');
+                            backdrops.forEach(backdrop => {
+                                backdrop.style.pointerEvents = 'none';
+                            });
+                            console.log('🔧 Pre-set backdrop pointer-events to none');
+                            
+                            feeModal.show();
+                        }
+                    }
+                });
+        }
+
+        function saveFee() {
+            const feedId = parseInt(document.getElementById('feedId').value);
+            const name = document.getElementById('feeName').value.trim();
+            const value = parseFloat(document.getElementById('feeValue').value);
+            const thresholdValue = document.getElementById('feeThreshold').value;
+            const threshold = thresholdValue ? parseFloat(thresholdValue) : null;
+            const description = document.getElementById('feeDescription').value.trim();
+
+            if (!name || isNaN(value)) {
+                alert('Vui lòng điền đầy đủ thông tin!');
+                return;
+            }
+
+            const feeData = {
+                feedId: feedId,
+                name: name,
+                value: value,
+                threshold: threshold,
+                description: description || null
+            };
+
+            fetch('/Admin/SaveFee', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(feeData)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert(result.message);
+                    feeModal.hide();
+                    loadFees();
+                } else {
+                    alert('Lỗi: ' + result.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Lỗi khi lưu phí!');
+            });
+        }
+
+        function deleteFee(id, name) {
+            if (!confirm(`Bạn có chắc muốn xóa phí "${name}"?`)) {
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('id', id);
+
+            fetch('/Admin/DeleteFee', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert(result.message);
+                    loadFees();
+                } else {
+                    alert('Lỗi: ' + result.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Lỗi khi xóa phí!');
+            });
+        }
+
+        // 🔧 CRITICAL FIX: Debugging helper functions
+        window.debugFeeModalBackdrop = function() {
+            console.log('=== FEE MODAL BACKDROP DEBUG ===');
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            console.log(`Found ${backdrops.length} backdrop(s)`);
+            
+            backdrops.forEach((backdrop, index) => {
+                const computed = window.getComputedStyle(backdrop);
+                console.log(`Backdrop #${index + 1}:`, {
+                    pointerEvents: computed.pointerEvents,
+                    zIndex: computed.zIndex
+                });
+                
+                if (computed.pointerEvents !== 'none') {
+                    console.error(`❌ Backdrop #${index + 1} has pointer-events: ${computed.pointerEvents}`);
+                } else {
+                    console.log(`✅ Backdrop #${index + 1} has correct pointer-events: none`);
+                }
+            });
+        };
+
+        window.fixFeeModalBackdrop = function() {
+            console.log('🔧 Manually fixing fee modal backdrop...');
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            backdrops.forEach((backdrop, index) => {
+                backdrop.style.pointerEvents = 'none';
+                backdrop.style.setProperty('pointer-events', 'none', 'important');
+                console.log(`Fixed backdrop #${index + 1}`);
+            });
+            console.log('✅ Done!');
+        };
+
+        console.log('📋 Fee Modal Debug Commands:');
+        console.log('   debugFeeModalBackdrop()  - Check backdrop status');
+        console.log('   fixFeeModalBackdrop()    - Manually fix backdrop');
+    </script>
+}

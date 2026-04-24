@@ -1,0 +1,366 @@
+/* ============================================
+   UniStyle Admin Panel CSS
+   ============================================ */
+
+:root {
+    --primary-color: #667eea;
+    --secondary-color: #764ba2;
+    --sidebar-width: 260px;
+    --sidebar-collapsed-width: 60px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f5f7fa;
+}
+
+/* ============================================
+   Wrapper & Layout
+   ============================================ */
+
+.wrapper {
+    display: flex;
+    width: 100%;
+    align-items: stretch;
+}
+
+#content {
+    width: 100%;
+    min-height: 100vh;
+    transition: all 0.3s;
+    background: #f5f7fa;
+}
+
+/* ============================================
+   Sidebar
+   ============================================ */
+
+#sidebar {
+    min-width: var(--sidebar-width);
+    max-width: var(--sidebar-width);
+    background: #fff;
+    color: #333;
+    transition: all 0.3s;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 999;
+    overflow-y: auto;
+    border-right: 1px solid #e0e0e0;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+}
+
+#sidebar.collapsed {
+    min-width: var(--sidebar-collapsed-width);
+    max-width: var(--sidebar-collapsed-width);
+}
+
+#sidebar .sidebar-header {
+    padding: 20px;
+    background: #f8f9fa;
+    text-align: center;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+#sidebar .sidebar-header h3 {
+    color: #333;
+    font-size: 1.2rem;
+    margin-top: 10px;
+}
+
+#sidebar.collapsed .sidebar-header h3 {
+    display: none;
+}
+
+#sidebar ul {
+    padding: 20px 0;
+}
+
+#sidebar ul li {
+    padding: 0;
+}
+
+#sidebar ul li a {
+    padding: 12px 20px;
+    font-size: 1rem;
+    display: block;
+    color: #333;
+    text-decoration: none;
+    transition: all 0.3s;
+}
+
+#sidebar ul li a:hover {
+    background: #f8f9fa;
+    border-left: 4px solid #333;
+    padding-left: 16px;
+    color: #000;
+}
+
+#sidebar ul li.active > a {
+    background: #e9ecef;
+    border-left: 4px solid #333;
+    padding-left: 16px;
+    color: #000;
+    font-weight: 600;
+}
+
+#sidebar ul li a i {
+    margin-right: 10px;
+    width: 20px;
+    text-align: center;
+}
+
+#sidebar.collapsed ul li a span {
+    display: none;
+}
+
+/* Adjust content when sidebar is present */
+#content {
+    margin-left: var(--sidebar-width);
+}
+
+#sidebar.collapsed ~ #content {
+    margin-left: var(--sidebar-collapsed-width);
+}
+
+/* ============================================
+   Top Navbar
+   ============================================ */
+
+.navbar {
+    padding: 15px 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+#sidebarCollapse {
+    background: transparent;
+    border: none;
+    font-size: 1.2rem;
+    color: #333;
+}
+
+#sidebarCollapse:hover {
+    background: #f5f7fa;
+    border-radius: 5px;
+}
+
+/* ============================================
+   Statistics Cards
+   ============================================ */
+
+.stats-card {
+    border-radius: 10px;
+    transition: transform 0.3s;
+}
+
+.stats-card:hover {
+    transform: translateY(-5px);
+}
+
+.stats-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: white;
+}
+
+/* ============================================
+   Cards
+   ============================================ */
+
+.card {
+    border-radius: 10px;
+    transition: all 0.3s;
+}
+
+.card:hover {
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1) !important;
+}
+
+.card-header {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    padding: 15px 20px;
+    border-radius: 10px 10px 0 0 !important;
+}
+
+/* ============================================
+   Tables
+   ============================================ */
+
+.table {
+    background: white;
+    margin-bottom: 0;
+}
+
+.table thead {
+    background: #f8f9fa;
+}
+
+.table thead th {
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+    color: #495057;
+    padding: 15px;
+}
+
+.table tbody tr {
+    transition: all 0.3s;
+}
+
+.table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.table tbody td {
+    padding: 15px;
+    vertical-align: middle;
+}
+
+/* ============================================
+   Buttons
+   ============================================ */
+
+.btn {
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-weight: 500;
+    transition: all 0.3s;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    border: none;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+/* ============================================
+   Badges
+   ============================================ */
+
+.badge {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+/* ============================================
+   Forms
+   ============================================ */
+
+.form-control, .form-select {
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    padding: 10px 15px;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+/* ============================================
+   Responsive
+   ============================================ */
+
+@media (max-width: 768px) {
+    #sidebar {
+        margin-left: calc(-1 * var(--sidebar-width));
+    }
+
+    #sidebar.active {
+        margin-left: 0;
+    }
+
+    #content {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    #sidebar.collapsed {
+        margin-left: calc(-1 * var(--sidebar-collapsed-width));
+    }
+}
+
+/* ============================================
+   Charts
+   ============================================ */
+
+canvas {
+    max-height: 300px;
+}
+
+/* ============================================
+   Pagination
+   ============================================ */
+
+.pagination {
+    margin-bottom: 0;
+}
+
+.page-link {
+    border-radius: 8px;
+    margin: 0 2px;
+    border: 1px solid #dee2e6;
+    color: var(--primary-color);
+}
+
+.page-link:hover {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.page-item.active .page-link {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+/* ============================================
+   Utilities
+   ============================================ */
+
+.shadow-sm {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+}
+
+.text-primary {
+    color: var(--primary-color) !important;
+}
+
+.bg-primary {
+    background: var(--primary-color) !important;
+}
+
+/* Scrollbar */
+#sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+#sidebar::-webkit-scrollbar-track {
+    background: #f8f9fa;
+}
+
+#sidebar::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 3px;
+}
+
+#sidebar::-webkit-scrollbar-thumb:hover {
+    background: #999;
+}
+

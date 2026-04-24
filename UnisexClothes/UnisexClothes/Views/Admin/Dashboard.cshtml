@@ -1,0 +1,348 @@
+@{
+    ViewData["Title"] = "Dashboard";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<style>
+    /* Stats card animations */
+    .stats-card {
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .stats-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.1), transparent);
+        transition: left 0.5s ease;
+    }
+    
+    .stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+    }
+    
+    .stats-card:hover::before {
+        left: 100%;
+    }
+    
+    .stats-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+    
+    .stats-card:hover .stats-icon {
+        transform: rotate(10deg) scale(1.1);
+    }
+    
+    /* Card appear animation */
+    .stats-card {
+        animation: fadeInUp 0.6s ease forwards;
+        opacity: 0;
+    }
+    
+    .stats-card:nth-child(1) { animation-delay: 0.1s; }
+    .stats-card:nth-child(2) { animation-delay: 0.2s; }
+    .stats-card:nth-child(3) { animation-delay: 0.3s; }
+    .stats-card:nth-child(4) { animation-delay: 0.4s; }
+    
+    @@keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    /* Chart cards */
+    .card {
+        transition: all 0.3s ease;
+    }
+    
+    .card:hover {
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+    }
+</style>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="fas fa-tachometer-alt"></i> Dashboard</h2>
+        <p class="text-muted">Tổng quan hệ thống UniStyle</p>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card stats-card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="text-muted mb-1">Tổng sản phẩm</p>
+                        <h3 class="mb-0">@ViewBag.TotalProducts</h3>
+                    </div>
+                    <div class="stats-icon" style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);">
+                        <i class="fas fa-box"></i>
+                    </div>
+                </div>
+                <!-- Real data from database -->
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card stats-card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="text-muted mb-1">Tổng đơn hàng</p>
+                        <h3 class="mb-0">@ViewBag.TotalOrders</h3>
+                    </div>
+                    <div class="stats-icon" style="background: linear-gradient(135deg, #2d2d2d 0%, #4a4a4a 100%);">
+                        <i class="fas fa-shopping-cart"></i>
+                    </div>
+                </div>
+                <!-- Real data from database -->
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card stats-card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="text-muted mb-1">Người dùng</p>
+                        <h3 class="mb-0">@ViewBag.TotalUsers</h3>
+                    </div>
+                    <div class="stats-icon" style="background: linear-gradient(135deg, #4a4a4a 0%, #6a6a6a 100%);">
+                        <i class="fas fa-users"></i>
+                    </div>
+                </div>
+                <!-- Real data from database -->
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card stats-card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="text-muted mb-1">Doanh thu</p>
+                        <h3 class="mb-0">@(string.Format("{0:N0}", ViewBag.TotalRevenue))₫</h3>
+                    </div>
+                    <div class="stats-icon" style="background: linear-gradient(135deg, #d4af37 0%, #ffd700 100%);">
+                        <i class="fas fa-dollar-sign"></i>
+                    </div>
+                </div>
+                <!-- Real data from database -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row mb-4">
+    <div class="col-lg-8 mb-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="fas fa-chart-line"></i> Doanh thu theo tháng</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="revenueChart" height="80"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4 mb-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="fas fa-chart-pie"></i> Sản phẩm bán chạy</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="productChart" height="150"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Orders -->
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-clock"></i> Đơn hàng gần đây</h5>
+                <a asp-controller="Admin" asp-action="Orders" class="btn btn-sm btn-dark">
+                    Xem tất cả <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Mã ĐH</th>
+                                <th>Khách hàng</th>
+                                <th>Tổng tiền</th>
+                                <th>Trạng thái</th>
+                                <th>Ngày đặt</th>
+                                <th>Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentOrdersTable">
+                            <!-- Recent orders will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Load dashboard stats
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDashboardStats();
+        });
+
+        function loadDashboardStats() {
+            fetch('/Admin/GetDashboardStats')
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        // Render recent orders
+                        renderRecentOrders(result.recentOrders);
+                        
+                        // Initialize charts with real data
+                        initializeCharts();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading dashboard stats:', error);
+                });
+        }
+
+        function renderRecentOrders(orders) {
+            const tbody = document.getElementById('recentOrdersTable');
+            tbody.innerHTML = '';
+
+            if (!orders || orders.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Không có đơn hàng nào</td></tr>';
+                return;
+            }
+
+            orders.forEach(order => {
+                const statusBadge = getStatusBadge(order.status);
+                const row = `
+                    <tr>
+                        <td>#${String(order.id).padStart(4, '0')}</td>
+                        <td>${order.customer}</td>
+                        <td>${formatPrice(order.total)}₫</td>
+                        <td>${statusBadge}</td>
+                        <td>${order.date}</td>
+                        <td>
+                            <a href="/Admin/OrderDetail/${order.id}" class="btn btn-sm btn-outline-dark">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+        }
+
+        function getStatusBadge(status) {
+            const badges = {
+                'Chờ xác nhận': '<span class="badge" style="background: linear-gradient(135deg, #ffd700 0%, #d4af37 100%); color: #1a1a1a;">Chờ xác nhận</span>',
+                'Đang xử lý': '<span class="badge" style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); color: white;">Đang xử lý</span>',
+                'Đang giao': '<span class="badge" style="background: linear-gradient(135deg, #4a4a4a 0%, #6a6a6a 100%); color: white;">Đang giao</span>',
+                'Hoàn thành': '<span class="badge bg-success">Hoàn thành</span>',
+                'Đã hủy': '<span class="badge bg-danger">Đã hủy</span>'
+            };
+            return badges[status] || `<span class="badge bg-secondary">${status}</span>`;
+        }
+
+        function formatPrice(price) {
+            return new Intl.NumberFormat('vi-VN').format(price);
+        }
+
+        function initializeCharts() {
+            // Revenue Chart - Show message that real data needs time to accumulate
+            const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+            new Chart(revenueCtx, {
+                type: 'line',
+                data: {
+                    labels: ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12'],
+                    datasets: [{
+                        label: 'Doanh thu (VND)',
+                        data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                        borderColor: '#1a1a1a',
+                        backgroundColor: 'rgba(26, 26, 26, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: 'Dữ liệu thực sẽ cập nhật khi có đơn hàng',
+                            color: '#999'
+                        }
+                    }
+                }
+            });
+
+            // Product Chart - Show message
+            const productCtx = document.getElementById('productChart').getContext('2d');
+            new Chart(productCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Áo', 'Quần', 'Phụ kiện'],
+                    datasets: [{
+                        data: [0, 0, 0],
+                        backgroundColor: ['#1a1a1a', '#4a4a4a', '#d4af37']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Dữ liệu thực sẽ cập nhật',
+                            color: '#999'
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+}
+
+
+

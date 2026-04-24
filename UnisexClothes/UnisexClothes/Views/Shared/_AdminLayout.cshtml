@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - UniStyle Admin</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+    <style>
+        /* 🔧🔧🔧 CRITICAL FIX: GLOBAL BACKDROP POINTER-EVENTS FIX 🔧🔧🔧 */
+        .modal-backdrop {
+            pointer-events: none !important;
+            opacity: 0.15 !important; /* Giảm opacity để nền sáng hơn */
+            background-color: rgba(0, 0, 0, 0.2) !important; /* Nền nhạt hơn */
+        }
+        .modal-backdrop.show {
+            pointer-events: none !important;
+            opacity: 0.15 !important;
+        }
+        .modal-backdrop.fade {
+            pointer-events: none !important;
+        }
+        .modal-backdrop.fade.show {
+            opacity: 0.15 !important;
+        }
+        /* End Critical Fix */
+        
+        /* Animated Background */
+        body {
+            position: relative;
+            overflow-x: hidden;
+        }
+        
+        .animated-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: 
+                linear-gradient(180deg, 
+                    #ffffff 0%, 
+                    #ffffff 25%, 
+                    #1a1a1a 25%, 
+                    #1a1a1a 50%, 
+                    #ffffff 50%, 
+                    #ffffff 75%, 
+                    #1a1a1a 75%, 
+                    #1a1a1a 100%
+                );
+            background-size: 100% 400%;
+            animation: slideBackground 30s linear infinite;
+        }
+        
+        @@keyframes slideBackground {
+            0% { background-position: 0% 0%; }
+            100% { background-position: 0% 100%; }
+        }
+        
+        /* Halftone dots pattern overlay */
+        .animated-bg::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                radial-gradient(circle at 25% 25%, rgba(0, 0, 0, 0.15) 2%, transparent 2%),
+                radial-gradient(circle at 75% 75%, rgba(0, 0, 0, 0.15) 2%, transparent 2%),
+                radial-gradient(circle at 25% 75%, rgba(255, 255, 255, 0.1) 2%, transparent 2%),
+                radial-gradient(circle at 75% 25%, rgba(255, 255, 255, 0.1) 2%, transparent 2%);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 10px, 0 10px, 10px 0;
+            animation: dotsFade 3s ease-in-out infinite alternate;
+        }
+        
+        @@keyframes dotsFade {
+            0% { opacity: 0.3; }
+            100% { opacity: 0.6; }
+        }
+        
+        /* Gradient transition overlay for smooth blend */
+        .animated-bg::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                linear-gradient(180deg, 
+                    transparent 23%, 
+                    rgba(0, 0, 0, 0.05) 25%, 
+                    transparent 27%,
+                    transparent 48%, 
+                    rgba(255, 255, 255, 0.05) 50%, 
+                    transparent 52%,
+                    transparent 73%, 
+                    rgba(0, 0, 0, 0.05) 75%, 
+                    transparent 77%
+                );
+            background-size: 100% 400%;
+            animation: slideBackground 30s linear infinite;
+        }
+        
+        @@keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        /* Floating Particles - Black and White theme */
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+            opacity: 0.08;
+        }
+        
+        .particle.white {
+            background: radial-gradient(circle, #ffffff, rgba(255, 255, 255, 0.5));
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+        }
+        
+        .particle.dark {
+            background: radial-gradient(circle, #1a1a1a, rgba(0, 0, 0, 0.5));
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        @@keyframes float {
+            0%, 100% {
+                transform: translateY(0) translateX(0);
+            }
+            25% {
+                transform: translateY(-20px) translateX(15px);
+            }
+            50% {
+                transform: translateY(-40px) translateX(-15px);
+            }
+            75% {
+                transform: translateY(-20px) translateX(-20px);
+            }
+        }
+        
+        /* Geometric shapes */
+        .geo-shape {
+            position: absolute;
+            pointer-events: none;
+            opacity: 0.03;
+        }
+        
+        @@keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Wave effect */
+        .wave {
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            border-radius: 40%;
+            opacity: 0.05;
+            pointer-events: none;
+        }
+        
+        @@keyframes wave {
+            0% {
+                transform: translate(-50%, -50%) rotate(0deg) scale(1);
+            }
+            100% {
+                transform: translate(-50%, -50%) rotate(360deg) scale(1.2);
+            }
+        }
+        
+        /* Pulsing dots */
+        .pulse-dot {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: pulse 3s ease-in-out infinite;
+        }
+        
+        @@keyframes pulse {
+            0%, 100% {
+                opacity: 0.05;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.15;
+                transform: scale(1.3);
+            }
+        }
+        
+        /* Grid lines overlay */
+        .grid-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                linear-gradient(0deg, transparent 24%, rgba(255, 255, 255, 0.05) 25%, rgba(255, 255, 255, 0.05) 26%, transparent 27%, transparent 74%, rgba(0, 0, 0, 0.03) 75%, rgba(0, 0, 0, 0.03) 76%, transparent 77%, transparent),
+                linear-gradient(90deg, transparent 24%, rgba(255, 255, 255, 0.05) 25%, rgba(255, 255, 255, 0.05) 26%, transparent 27%, transparent 74%, rgba(0, 0, 0, 0.03) 75%, rgba(0, 0, 0, 0.03) 76%, transparent 77%, transparent);
+            background-size: 100px 100px;
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        
+        /* Noise texture overlay */
+        .noise-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url('data:image/svg+xml,%3Csvg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)"/%3E%3C/svg%3E');
+            opacity: 0.03;
+            pointer-events: none;
+            mix-blend-mode: overlay;
+        }
+        
+        /* Ensure content is above background */
+        .wrapper {
+            position: relative;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="animated-bg" id="adminBg"></div>
+    <div class="wrapper">
+        <!-- Sidebar -->
+        <nav id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <img src="~/images/LogovsBrandingUniSex/logo.png" alt="UniStyle" style="height: 40px;">
+                <h3>UniStyle Admin</h3>
+            </div>
+
+            <ul class="list-unstyled components">
+                <li class="@(ViewContext.RouteData.Values["Action"]?.ToString() == "Dashboard" ? "active" : "")">
+                    <a asp-controller="Admin" asp-action="Dashboard">
+                        <i class="fas fa-tachometer-alt"></i> Dashboard
+                    </a>
+                </li>
+                <li class="@(ViewContext.RouteData.Values["Action"]?.ToString() == "Categories" ? "active" : "")">
+                    <a asp-controller="Admin" asp-action="Categories">
+                        <i class="fas fa-tags"></i> Danh mục
+                    </a>
+                </li>
+                <li class="@(ViewContext.RouteData.Values["Action"]?.ToString() == "Products" || ViewContext.RouteData.Values["Action"]?.ToString() == "ProductEdit" ? "active" : "")">
+                    <a asp-controller="Admin" asp-action="Products">
+                        <i class="fas fa-box"></i> Sản phẩm
+                    </a>
+                </li>
+                <li class="@(ViewContext.RouteData.Values["Action"]?.ToString() == "Orders" || ViewContext.RouteData.Values["Action"]?.ToString() == "OrderDetail" ? "active" : "")">
+                    <a asp-controller="Admin" asp-action="Orders">
+                        <i class="fas fa-shopping-cart"></i> Đơn hàng
+                    </a>
+                </li>
+                <li class="@(ViewContext.RouteData.Values["Action"]?.ToString() == "Fees" ? "active" : "")">
+                    <a asp-controller="Admin" asp-action="Fees">
+                        <i class="fas fa-dollar-sign"></i> Phí
+                    </a>
+                </li>
+                <li class="@(ViewContext.RouteData.Values["Action"]?.ToString() == "Coupons" ? "active" : "")">
+                    <a asp-controller="Admin" asp-action="Coupons">
+                        <i class="fas fa-ticket-alt"></i> Coupon
+                    </a>
+                </li>
+                <li class="@(ViewContext.RouteData.Values["Action"]?.ToString() == "Users" ? "active" : "")">
+                    <a asp-controller="Admin" asp-action="Users">
+                        <i class="fas fa-users"></i> Người dùng
+                    </a>
+                </li>
+                <li class="@(ViewContext.RouteData.Values["Controller"]?.ToString() == "Comments" ? "active" : "")">
+                    <a asp-controller="Admin" asp-action="Comments">
+                        <i class="fas fa-comments"></i> Duyệt bình luận
+                    </a>
+                </li>
+                <li>
+                    <a href="/" target="_blank">
+                        <i class="fas fa-external-link-alt"></i> Xem website
+                    </a>
+                </li>
+                <li>
+                    <a asp-controller="Admin" asp-action="Logout" class="text-danger">
+                        <i class="fas fa-sign-out-alt"></i> Đăng xuất
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Page Content -->
+        <div id="content">
+            <!-- Top Navbar -->
+            <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom">
+                <div class="container-fluid">
+                    <button type="button" id="sidebarCollapse" class="btn btn-sm">
+                        <i class="fas fa-bars"></i>
+                    </button>
+
+                    <div class="ms-auto d-flex align-items-center">
+                        <div class="dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-user-circle"></i> Admin
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="#"><i class="fas fa-user"></i> Hồ sơ</a></li>
+                                <li><a class="dropdown-item" href="#"><i class="fas fa-cog"></i> Cài đặt</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" asp-controller="Admin" asp-action="Logout"><i class="fas fa-sign-out-alt"></i> Đăng xuất</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <div class="container-fluid mt-4">
+                @RenderBody()
+            </div>
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/admin.js" asp-append-version="true"></script>
+    
+    <script>
+        // 🔧🔧🔧 CRITICAL FIX: GLOBAL BACKDROP POINTER-EVENTS FIX 🔧🔧🔧
+        // This runs for ALL modals in admin panel automatically
+        
+        (function() {
+            console.log('🔧 GLOBAL BACKDROP FIX LOADED');
+            
+            // Fix 1: MutationObserver - catches backdrop immediately when created
+            const backdropObserver = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    mutation.addedNodes.forEach(function(node) {
+                        if (node.classList && node.classList.contains('modal-backdrop')) {
+                            node.style.pointerEvents = 'none';
+                            node.style.setProperty('pointer-events', 'none', 'important');
+                            console.log('🔧 MutationObserver: Fixed backdrop pointer-events');
+                        }
+                    });
+                });
+            });
+            backdropObserver.observe(document.body, { 
+                childList: true,
+                subtree: false
+            });
+            
+            // Fix 2: On page load - fix any existing backdrops
+            document.addEventListener('DOMContentLoaded', function() {
+                const backdrops = document.querySelectorAll('.modal-backdrop');
+                backdrops.forEach(backdrop => {
+                    backdrop.style.pointerEvents = 'none';
+                    backdrop.style.setProperty('pointer-events', 'none', 'important');
+                });
+                console.log('🔧 DOMContentLoaded: Fixed ' + backdrops.length + ' backdrop(s)');
+            });
+            
+            // Fix 3: Periodic check every 500ms
+            setInterval(function() {
+                const backdrops = document.querySelectorAll('.modal-backdrop');
+                if (backdrops.length > 0) {
+                    backdrops.forEach(backdrop => {
+                        const computed = window.getComputedStyle(backdrop).pointerEvents;
+                        if (computed !== 'none') {
+                            backdrop.style.pointerEvents = 'none';
+                            backdrop.style.setProperty('pointer-events', 'none', 'important');
+                            console.log('🔧 Periodic Check: Fixed backdrop');
+                        }
+                    });
+                }
+            }, 500);
+            
+            // Fix 4: Global event listener for all Bootstrap modals
+            document.addEventListener('show.bs.modal', function(e) {
+                setTimeout(function() {
+                    const backdrops = document.querySelectorAll('.modal-backdrop');
+                    backdrops.forEach(backdrop => {
+                        backdrop.style.pointerEvents = 'none';
+                        backdrop.style.setProperty('pointer-events', 'none', 'important');
+                    });
+                    console.log('🔧 show.bs.modal: Fixed backdrop');
+                }, 10);
+            }, true);
+            
+            document.addEventListener('shown.bs.modal', function(e) {
+                setTimeout(function() {
+                    const backdrops = document.querySelectorAll('.modal-backdrop');
+                    backdrops.forEach(backdrop => {
+                        backdrop.style.pointerEvents = 'none';
+                        backdrop.style.setProperty('pointer-events', 'none', 'important');
+                    });
+                    console.log('🔧 shown.bs.modal: Fixed backdrop');
+                }, 10);
+            }, true);
+            
+            // Global debug helper
+            window.debugAllBackdrops = function() {
+                console.log('=== ALL BACKDROPS DEBUG ===');
+                const backdrops = document.querySelectorAll('.modal-backdrop');
+                console.log('Found ' + backdrops.length + ' backdrop(s)');
+                backdrops.forEach((b, i) => {
+                    const computed = window.getComputedStyle(b).pointerEvents;
+                    console.log('Backdrop #' + (i+1) + ': pointer-events = ' + computed);
+                    if (computed !== 'none') {
+                        console.error('❌ WRONG! Should be none');
+                    } else {
+                        console.log('✅ CORRECT');
+                    }
+                });
+            };
+            
+            window.fixAllBackdrops = function() {
+                const backdrops = document.querySelectorAll('.modal-backdrop');
+                backdrops.forEach((b, i) => {
+                    b.style.pointerEvents = 'none';
+                    b.style.setProperty('pointer-events', 'none', 'important');
+                    console.log('Fixed backdrop #' + (i+1));
+                });
+                console.log('✅ Fixed all ' + backdrops.length + ' backdrop(s)');
+            };
+            
+            console.log('📋 Global debug commands available:');
+            console.log('   debugAllBackdrops() - Check all backdrops');
+            console.log('   fixAllBackdrops()   - Fix all backdrops');
+        })();
+    </script>
+    
+    <script>
+        // Create floating particles for admin background
+        function createAdminParticles() {
+            const animatedBg = document.getElementById('adminBg');
+            const particleCount = 20; // More particles for black/white theme
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle ' + (Math.random() > 0.5 ? 'white' : 'dark');
+                
+                // Random size between 20px and 60px
+                const size = Math.random() * 40 + 20;
+                particle.style.width = size + 'px';
+                particle.style.height = size + 'px';
+                
+                // Random position
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.top = Math.random() * 100 + '%';
+                
+                // Random animation duration between 15s and 30s (slower)
+                const duration = Math.random() * 15 + 15;
+                particle.style.animation = `float ${duration}s ease-in-out infinite`;
+                
+                // Random animation delay
+                const delay = Math.random() * 5;
+                particle.style.animationDelay = delay + 's';
+                
+                animatedBg.appendChild(particle);
+            }
+        }
+        
+        // Create geometric shapes - Black & White theme
+        function createGeoShapes() {
+            const animatedBg = document.getElementById('adminBg');
+            const shapes = ['circle', 'square', 'triangle'];
+            const shapeCount = 10;
+            
+            for (let i = 0; i < shapeCount; i++) {
+                const shape = document.createElement('div');
+                shape.className = 'geo-shape';
+                
+                const shapeType = shapes[Math.floor(Math.random() * shapes.length)];
+                const size = Math.random() * 80 + 40;
+                
+                shape.style.width = size + 'px';
+                shape.style.height = size + 'px';
+                shape.style.left = Math.random() * 100 + '%';
+                shape.style.top = Math.random() * 100 + '%';
+                
+                // Alternate between white and black borders
+                const isWhite = Math.random() > 0.5;
+                const borderColor = isWhite ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.15)';
+                
+                if (shapeType === 'circle') {
+                    shape.style.borderRadius = '50%';
+                    shape.style.border = `3px solid ${borderColor}`;
+                } else if (shapeType === 'square') {
+                    shape.style.border = `3px solid ${borderColor}`;
+                    shape.style.transform = 'rotate(45deg)';
+                } else {
+                    shape.style.width = '0';
+                    shape.style.height = '0';
+                    shape.style.borderLeft = size/2 + 'px solid transparent';
+                    shape.style.borderRight = size/2 + 'px solid transparent';
+                    shape.style.borderBottom = size + 'px solid ' + borderColor.replace('0.15', '0.1').replace('0.2', '0.15');
+                }
+                
+                // Rotation animation for some shapes
+                if (Math.random() > 0.5) {
+                    const rotationDuration = Math.random() * 20 + 20;
+                    shape.style.animation = `rotate ${rotationDuration}s linear infinite`;
+                }
+                
+                animatedBg.appendChild(shape);
+            }
+        }
+        
+        // Create waves - Black & White
+        function createWaves() {
+            const animatedBg = document.getElementById('adminBg');
+            const waveCount = 4;
+            
+            for (let i = 0; i < waveCount; i++) {
+                const wave = document.createElement('div');
+                wave.className = 'wave';
+                
+                // Position
+                wave.style.left = Math.random() * 100 + '%';
+                wave.style.top = Math.random() * 100 + '%';
+                
+                // Color - alternating white and black
+                if (i % 2 === 0) {
+                    wave.style.background = 'radial-gradient(circle, rgba(255, 255, 255, 0.15), transparent)';
+                } else {
+                    wave.style.background = 'radial-gradient(circle, rgba(0, 0, 0, 0.08), transparent)';
+                }
+                
+                // Animation duration
+                const duration = 15 + Math.random() * 10;
+                wave.style.animation = `wave ${duration}s linear infinite`;
+                wave.style.animationDelay = i * 3 + 's';
+                
+                animatedBg.appendChild(wave);
+            }
+        }
+        
+        // Create pulsing dots - Black & White
+        function createPulsingDots() {
+            const animatedBg = document.getElementById('adminBg');
+            const dotCount = 15;
+            
+            for (let i = 0; i < dotCount; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'pulse-dot';
+                
+                const size = Math.random() * 100 + 50;
+                dot.style.width = size + 'px';
+                dot.style.height = size + 'px';
+                dot.style.left = Math.random() * 100 + '%';
+                dot.style.top = Math.random() * 100 + '%';
+                
+                // Color - alternating white and black
+                if (Math.random() > 0.5) {
+                    dot.style.background = 'radial-gradient(circle, rgba(255, 255, 255, 0.25), transparent)';
+                } else {
+                    dot.style.background = 'radial-gradient(circle, rgba(0, 0, 0, 0.15), transparent)';
+                }
+                
+                // Random animation delay
+                dot.style.animationDelay = Math.random() * 3 + 's';
+                
+                animatedBg.appendChild(dot);
+            }
+        }
+        
+        // Create grid overlay
+        function createGridOverlay() {
+            const animatedBg = document.getElementById('adminBg');
+            const grid = document.createElement('div');
+            grid.className = 'grid-overlay';
+            animatedBg.appendChild(grid);
+        }
+        
+        // Create noise overlay
+        function createNoiseOverlay() {
+            const animatedBg = document.getElementById('adminBg');
+            const noise = document.createElement('div');
+            noise.className = 'noise-overlay';
+            animatedBg.appendChild(noise);
+        }
+        
+        // Initialize effects when page loads
+        window.addEventListener('DOMContentLoaded', function() {
+            createGridOverlay();
+            createNoiseOverlay();
+            createAdminParticles();
+            createGeoShapes();
+            createWaves();
+            createPulsingDots();
+        });
+    </script>
+    
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
+
+

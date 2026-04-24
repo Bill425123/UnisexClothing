@@ -1,0 +1,691 @@
+@{
+    ViewData["Title"] = "Vòng Quay May Mắn";
+    var isLoggedIn = ViewBag.IsLoggedIn as bool? ?? false;
+}
+
+<style>
+    #spinButton:hover:not(:disabled) {
+        transform: translate(-50%, -50%) scale(1.05);
+        box-shadow: 0 6px 20px rgba(212, 175, 55, 0.7);
+    }
+    #spinButton:active:not(:disabled) {
+        transform: translate(-50%, -50%) scale(0.95);
+    }
+    
+    /* Modal button hover effects */
+    .save-voucher-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(212, 175, 55, 0.5) !important;
+    }
+    .save-voucher-btn:active {
+        transform: translateY(0);
+    }
+    .btn-dark:hover {
+        background-color: #2d2d2d !important;
+        transform: translateY(-2px);
+    }
+    
+    /* Modal close button styling */
+    #resultModal .modal-header {
+        padding: 1rem 1rem 0 1rem;
+        position: absolute;
+        right: 0;
+        top: 0;
+        z-index: 1;
+    }
+    #resultModal .btn-close {
+        background-color: rgba(0, 0, 0, 0.1);
+        border-radius: 50%;
+        padding: 0.5rem;
+        opacity: 0.5;
+        transition: all 0.3s ease;
+    }
+    #resultModal .btn-close:hover {
+        background-color: rgba(0, 0, 0, 0.2);
+        opacity: 1;
+        transform: rotate(90deg);
+    }
+    
+    /* CRITICAL FIX: Backdrop must not block clicks and must be BELOW modal */
+    .modal-backdrop {
+        pointer-events: none !important;
+        z-index: 1040 !important;
+        opacity: 0.15 !important; /* Giảm từ 0.3 xuống 0.15 để sáng hơn */
+        background-color: rgba(0, 0, 0, 0.2) !important;
+    }
+    
+    .modal-backdrop.show {
+        opacity: 0.15 !important;
+    }
+    
+    /* Ensure modal is ABOVE backdrop and EVERYTHING else */
+    #resultModal {
+        z-index: 9999 !important;
+    }
+    
+    #resultModal .modal-dialog {
+        z-index: 10000 !important;
+    }
+    
+    #resultModal .modal-content {
+        z-index: 10001 !important;
+        background: #ffffff !important;
+        border: 3px solid #d4af37 !important;
+    }
+    
+    #resultModal .modal-body {
+        background: #ffffff !important;
+    }
+</style>
+
+<!-- Spin Wheel Page -->
+<section class="py-5" style="background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 50%, #f0f2f5 100%); min-height: 100vh; position: relative; overflow: hidden; z-index: 0;">
+    <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; opacity: 0.05; background-image: repeating-linear-gradient(45deg, transparent, transparent 35px, #d4af37 35px, #d4af37 70px); z-index: 1;"></div>
+    <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(circle at 20% 30%, rgba(212, 175, 55, 0.15) 0%, transparent 50%), radial-gradient(circle at 80% 70%, rgba(255, 215, 0, 0.1) 0%, transparent 50%); z-index: 2;"></div>
+    <div class="container" style="position: relative; z-index: 10;">
+        <!-- Header -->
+        <div class="text-center text-dark mb-4">
+            <h1 class="display-4 fw-bold mb-3">
+                <i class="fas fa-gift me-3"></i>VÒNG QUAY MAY MẮN
+            </h1>
+            <p class="lead mb-4">Quay để nhận voucher giảm giá hấp dẫn!</p>
+            <div class="badge fs-5 px-4 py-3" style="background: linear-gradient(135deg, #d4af37 0%, #ffd700 100%); color: #1a1a1a;">
+                <i class="fas fa-sync-alt me-2"></i>
+                Số lượt quay còn lại: <span id="remainingSpins" class="fw-bold">@ViewBag.RemainingSpins</span>
+            </div>
+        </div>
+
+        @if (!isLoggedIn)
+        {
+            <div class="alert alert-warning text-center mb-4">
+                <i class="fas fa-lock me-2"></i>
+                Bạn cần <a href="@Url.Action("Login", "Account")" class="fw-bold text-decoration-underline">đăng nhập</a> để sử dụng vòng quay voucher.
+            </div>
+        }
+
+        <div class="row justify-content-center">
+            <!-- Spin Wheel -->
+            <div class="col-lg-6 mb-4">
+                <div class="card shadow-lg border-0" style="border-radius: 20px; overflow: hidden;">
+                    <div class="card-body p-5 text-center">
+                        <!-- Canvas for wheel -->
+                        <div class="position-relative d-inline-block">
+                            <canvas id="spinWheel" width="400" height="400" style="max-width: 100%;"></canvas>
+                            <!-- Spin Button -->
+                            <button id="spinButton" class="btn btn-lg position-absolute top-50 start-50 translate-middle" @(isLoggedIn ? "" : "disabled")
+                                    style="width: 80px; height: 80px; border-radius: 50%; z-index: 10; 
+                                           background: linear-gradient(135deg, #d4af37 0%, #ffd700 100%); 
+                                           border: 3px solid #fff;
+                                           color: #1a1a1a;
+                                           box-shadow: 0 4px 15px rgba(212, 175, 55, 0.5);">
+                                <i class="fas fa-play fs-3"></i>
+                            </button>
+                            <!-- Pointer -->
+                            <div class="position-absolute" style="top: -10px; left: 50%; transform: translateX(-50%); z-index: 5;">
+                                <i class="fas fa-caret-down" style="font-size: 3rem; color: #d4af37; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5));"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <p class="text-dark" style="opacity: 0.8;">
+                                @(isLoggedIn ? "Click vào nút giữa để quay!" : "Đăng nhập để kích hoạt nút quay.")
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Voucher Info -->
+            <div class="col-lg-6">
+                <div class="card shadow-lg border-0 h-100" style="border-radius: 20px;">
+                    <div class="card-body p-4">
+                        <h4 class="card-title mb-4">
+                            <i class="fas fa-ticket-alt text-dark me-2"></i>
+                            Voucher của bạn
+                        </h4>
+                        
+                        <div id="voucherResult" class="mb-4">
+                            <div class="alert" style="background-color: #fff3cd; border: 1px solid #ffc107; color: #856404;">
+                                <i class="fas fa-info-circle me-2"></i>
+                                Chưa có voucher. Hãy quay để nhận thưởng!
+                            </div>
+                        </div>
+
+                        <div class="border-top pt-4">
+                            <h5 class="mb-3">
+                                <i class="fas fa-star text-warning me-2"></i>
+                                Giải thưởng
+                            </h5>
+                            <ul class="list-unstyled" id="prizeList">
+                                <li class="mb-2 text-muted">
+                                    <i class="fas fa-spinner fa-spin me-2"></i>Đang tải...
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div class="border-top pt-4 mt-4">
+                            <h6 class="text-dark mb-3" style="opacity: 0.7;">
+                                <i class="fas fa-clock me-2"></i>
+                                Lưu ý
+                            </h6>
+                            <ul class="small text-dark" style="opacity: 0.8;">
+                                <li>Mỗi tài khoản có <strong>3 lượt quay/ngày</strong></li>
+                                <li>Voucher có hạn sử dụng 30 ngày</li>
+                                <li>Áp dụng cho đơn hàng từ 100,000đ</li>
+                            </ul>
+                        </div>
+
+                        <div class="d-grid gap-2 mt-4">
+                            <a href="@Url.Action("Shop", "Product")" class="btn btn-dark btn-lg">
+                                <i class="fas fa-shopping-bag me-2"></i>Mua sắm ngay
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Result Modal -->
+<div class="modal fade" id="resultModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; background: #ffffff !important; border: 3px solid #d4af37;">
+            <div class="modal-header border-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center p-5">
+                <div id="modalIcon" class="mb-4"></div>
+                <h3 id="modalTitle" class="mb-3"></h3>
+                <p id="modalMessage" class="text-muted mb-4"></p>
+                <div id="modalVoucherCode" class="mb-4"></div>
+                <div id="modalButtons" class="d-flex gap-2 justify-content-center">
+                    <button type="button" class="btn btn-dark btn-lg px-4" data-bs-dismiss="modal">Đóng</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    let isSpinning = false;
+    let currentRotation = 0;
+    let remainingSpins = @ViewBag.RemainingSpins;
+    let vouchers = [];
+    const userIsLoggedIn = @(isLoggedIn ? "true" : "false");
+
+    const canvas = document.getElementById('spinWheel');
+    const ctx = canvas.getContext('2d');
+    const spinButton = document.getElementById('spinButton');
+
+    // Load vouchers
+    async function loadVouchers() {
+        try {
+            const response = await fetch('/SpinWheel/GetVoucherPoolApi');
+            const result = await response.json();
+            if (result.success) {
+                vouchers = result.vouchers;
+                drawWheel();
+                updatePrizeList(vouchers, result.statistics);
+            }
+        } catch (error) {
+            console.error('Error loading vouchers:', error);
+            document.getElementById('prizeList').innerHTML = '<li class="mb-2 text-danger"><i class="fas fa-exclamation-circle me-2"></i>Không thể tải giải thưởng</li>';
+        }
+    }
+
+    // Update prize list with real data
+    function updatePrizeList(vouchers, statistics) {
+        const prizeList = document.getElementById('prizeList');
+        
+        if (!vouchers || vouchers.length === 0) {
+            prizeList.innerHTML = '<li class="mb-2 text-muted"><i class="fas fa-info-circle me-2"></i>Chưa có giải thưởng</li>';
+            return;
+        }
+
+        // Filter out "none" type and get unique prizes
+        const realPrizes = vouchers.filter(v => v.type !== 'none');
+        
+        if (realPrizes.length === 0) {
+            prizeList.innerHTML = '<li class="mb-2 text-muted"><i class="fas fa-info-circle me-2"></i>Chưa có giải thưởng</li>';
+            return;
+        }
+
+        // Group by value ranges
+        const prizeRanges = {
+            veryHigh: realPrizes.filter(v => v.value >= 500000),
+            high: realPrizes.filter(v => v.value >= 300000 && v.value < 500000),
+            medium: realPrizes.filter(v => v.value >= 100000 && v.value < 300000),
+            low: realPrizes.filter(v => v.value > 0 && v.value < 100000)
+        };
+
+        let html = '';
+        
+        // Show statistics first if available
+        if (statistics && statistics.totalPrizes > 0) {
+            html += `<li class="mb-3 p-2" style="background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%); border-radius: 8px; border-left: 4px solid #d4af37;">
+                <strong><i class="fas fa-chart-line me-2" style="color: #d4af37;"></i>Tổng: ${statistics.totalPrizes} voucher</strong><br>
+                <small class="text-dark" style="opacity: 0.8;">Từ ${formatCurrency(statistics.minValue)} đến ${formatCurrency(statistics.maxValue)}</small>
+            </li>`;
+        }
+        
+        // Show count by ranges
+        if (prizeRanges.veryHigh.length > 0) {
+            const minVal = Math.min(...prizeRanges.veryHigh.map(p => p.value));
+            const maxVal = Math.max(...prizeRanges.veryHigh.map(p => p.value));
+            html += `<li class="mb-2"><i class="fas fa-gem text-warning me-2"></i><strong>Giảm ${formatCurrency(minVal)} - ${formatCurrency(maxVal)}</strong> <span class="badge bg-warning text-dark">${prizeRanges.veryHigh.length} phần</span></li>`;
+        }
+        
+        if (prizeRanges.high.length > 0) {
+            const minVal = Math.min(...prizeRanges.high.map(p => p.value));
+            const maxVal = Math.max(...prizeRanges.high.map(p => p.value));
+            html += `<li class="mb-2"><i class="fas fa-gift text-danger me-2"></i>Giảm ${formatCurrency(minVal)} - ${formatCurrency(maxVal)} <span class="badge bg-danger">${prizeRanges.high.length} phần</span></li>`;
+        }
+        
+        if (prizeRanges.medium.length > 0) {
+            const minVal = Math.min(...prizeRanges.medium.map(p => p.value));
+            const maxVal = Math.max(...prizeRanges.medium.map(p => p.value));
+            html += `<li class="mb-2"><i class="fas fa-ticket-alt text-info me-2"></i>Giảm ${formatCurrency(minVal)} - ${formatCurrency(maxVal)} <span class="badge bg-info">${prizeRanges.medium.length} phần</span></li>`;
+        }
+        
+        if (prizeRanges.low.length > 0) {
+            const minVal = Math.min(...prizeRanges.low.map(p => p.value));
+            const maxVal = Math.max(...prizeRanges.low.map(p => p.value));
+            html += `<li class="mb-2"><i class="fas fa-tag text-success me-2"></i>Giảm ${formatCurrency(minVal)} - ${formatCurrency(maxVal)} <span class="badge bg-success">${prizeRanges.low.length} phần</span></li>`;
+        }
+
+        html += `<li class="mb-2 mt-3"><i class="fas fa-trophy text-warning me-2"></i><strong>Hãy thử vận may của bạn!</strong></li>`;
+        
+        prizeList.innerHTML = html;
+    }
+
+    // Format currency
+    function formatCurrency(amount) {
+        return new Intl.NumberFormat('vi-VN').format(amount) + 'đ';
+    }
+
+    // Draw wheel
+    function drawWheel() {
+        if (!vouchers || vouchers.length === 0) return;
+
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const radius = 180;
+        const sliceAngle = (2 * Math.PI) / vouchers.length;
+
+        // Gradient colors array - Elegant black & white theme with gold accents
+        const gradientColors = [
+            ['#1a1a1a', '#2d2d2d'], // Pure black
+            ['#d4af37', '#e6c569'], // Gold
+            ['#3a3a3a', '#555555'], // Dark gray
+            ['#c0c0c0', '#d3d3d3'], // Silver
+            ['#2d2d2d', '#404040'], // Charcoal
+            ['#f0e68c', '#ffd700'], // Light gold
+            ['#666666', '#808080'], // Medium gray
+            ['#e0e0e0', '#f5f5f5']  // Light gray/white
+        ];
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate(currentRotation * Math.PI / 180);
+
+        vouchers.forEach((voucher, index) => {
+            const startAngle = index * sliceAngle - Math.PI / 2;
+            const endAngle = startAngle + sliceAngle;
+            
+            // Log vị trí các ô (chỉ log khi rotation = 0 để tránh spam)
+            if (currentRotation === 0 && index < 3) {
+                const startDeg = (startAngle * 180 / Math.PI).toFixed(1);
+                const endDeg = (endAngle * 180 / Math.PI).toFixed(1);
+                console.log(`Ô ${index} (${voucher.name}): ${startDeg}° → ${endDeg}°`);
+            }
+
+            // Create gradient for slice
+            const colors = gradientColors[index % gradientColors.length];
+            const gradient = ctx.createLinearGradient(
+                Math.cos(startAngle + sliceAngle / 2) * radius,
+                Math.sin(startAngle + sliceAngle / 2) * radius,
+                Math.cos(startAngle + sliceAngle / 2) * radius / 2,
+                Math.sin(startAngle + sliceAngle / 2) * radius / 2
+            );
+            gradient.addColorStop(0, colors[0]);
+            gradient.addColorStop(1, colors[1]);
+
+            // Draw slice
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.arc(0, 0, radius, startAngle, endAngle);
+            ctx.closePath();
+            ctx.fillStyle = gradient;
+            ctx.fill();
+            ctx.strokeStyle = '#d4af37';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Draw text with shadow for better visibility
+            ctx.save();
+            ctx.rotate(startAngle + sliceAngle / 2);
+            ctx.textAlign = 'center';
+            
+            // Choose text color based on background brightness
+            const colorIndex = index % gradientColors.length;
+            const isLightBackground = [1, 3, 5, 7].includes(colorIndex); // Gold, Silver, Light Gold, Light Gray
+            ctx.fillStyle = isLightBackground ? '#1a1a1a' : '#fff';
+            
+            ctx.font = 'bold 13px Arial';
+            ctx.shadowColor = isLightBackground ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)';
+            ctx.shadowBlur = 4;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 2;
+            
+            // Split text if too long
+            const maxWidth = radius / 2;
+            const words = voucher.name.split(' ');
+            if (words.length > 2) {
+                ctx.fillText(words.slice(0, 2).join(' '), radius / 1.5, 0);
+                ctx.fillText(words.slice(2).join(' '), radius / 1.5, 18);
+            } else {
+                ctx.fillText(voucher.name, radius / 1.5, 10);
+            }
+            
+            ctx.restore();
+        });
+
+        ctx.restore();
+    }
+
+    // Spin wheel
+    spinButton.addEventListener('click', async () => {
+        if (!userIsLoggedIn) {
+            showModal('Cần đăng nhập', 'Vui lòng đăng nhập để sử dụng vòng quay voucher!', 'warning');
+            return;
+        }
+
+        if (isSpinning) return;
+        if (remainingSpins <= 0) {
+            showModal('Hết lượt quay!', 'Bạn đã hết lượt quay hôm nay. Quay lại vào ngày mai nhé!', 'warning');
+            return;
+        }
+
+        isSpinning = true;
+        spinButton.disabled = true;
+
+        try {
+            const response = await fetch('/SpinWheel/Spin', { method: 'POST' });
+            const result = await response.json();
+
+            if (result.success) {
+                // QUAN TRỌNG: Backend tính góc từ vị trí 0°
+                // Cần reset currentRotation về 0 trước khi quay để đồng bộ
+                currentRotation = 0;
+                const finalRotation = result.angle;
+                
+                console.log('🎯 Spin result:', result.voucher.name);
+                console.log('📐 Reset to 0, then spin to:', finalRotation);
+                
+                await animateWheel(finalRotation);
+                
+                remainingSpins = result.remainingSpins;
+                document.getElementById('remainingSpins').textContent = remainingSpins;
+                
+                showResultModal(result.voucher);
+            } else {
+                showModal('Lỗi!', result.message, 'error');
+            }
+        } catch (error) {
+            console.error('Error spinning:', error);
+            showModal('Lỗi!', 'Có lỗi xảy ra, vui lòng thử lại!', 'error');
+        } finally {
+            isSpinning = false;
+            spinButton.disabled = false;
+        }
+    });
+
+    // Animate wheel
+    function animateWheel(targetRotation) {
+        return new Promise(resolve => {
+            const duration = 4000;
+            const startTime = Date.now();
+            const startRotation = currentRotation;
+
+            function animate() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const easeOut = 1 - Math.pow(1 - progress, 3);
+
+                currentRotation = startRotation + (targetRotation - startRotation) * easeOut;
+                drawWheel();
+
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                } else {
+                    currentRotation = targetRotation % 360;
+                    resolve();
+                }
+            }
+            animate();
+        });
+    }
+
+    // Global variable to store current voucher
+    let currentWonVoucher = null;
+
+    // Show result modal
+    function showResultModal(voucher) {
+        const modal = new bootstrap.Modal(document.getElementById('resultModal'));
+        const icon = document.getElementById('modalIcon');
+        const title = document.getElementById('modalTitle');
+        const message = document.getElementById('modalMessage');
+        const codeDiv = document.getElementById('modalVoucherCode');
+        const buttonsDiv = document.getElementById('modalButtons');
+
+        if (voucher.type === 'none') {
+            icon.innerHTML = '<i class="fas fa-sad-tear" style="font-size: 5rem; color: #d4af37;"></i>';
+            title.textContent = 'Chúc may mắn lần sau!';
+            message.textContent = 'Đừng nản chí, bạn còn ' + remainingSpins + ' lượt quay!';
+            codeDiv.innerHTML = '';
+            buttonsDiv.innerHTML = '<button type="button" class="btn btn-dark btn-lg px-4" data-bs-dismiss="modal">Đóng</button>';
+            currentWonVoucher = null;
+        } else {
+            icon.innerHTML = '<i class="fas fa-gift" style="font-size: 5rem; background: linear-gradient(135deg, #d4af37 0%, #ffd700 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;"></i>';
+            title.textContent = 'Chúc mừng!';
+            message.textContent = 'Bạn đã nhận được: ' + voucher.name;
+            codeDiv.innerHTML = `
+                <div class="alert" style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); border: 2px solid #d4af37; color: white;">
+                    <strong>Mã voucher:</strong> <code class="fs-4" style="color: #ffd700; background: rgba(212, 175, 55, 0.1); padding: 5px 10px; border-radius: 5px;">${voucher.code}</code>
+                </div>`;
+            
+            // Store current voucher
+            currentWonVoucher = voucher;
+            
+            // Add Save button for won vouchers
+            buttonsDiv.innerHTML = `
+                <button type="button" class="btn btn-lg px-4 save-voucher-btn" onclick="saveVoucherToCollection()" style="background: linear-gradient(135deg, #d4af37 0%, #ffd700 100%); color: #1a1a1a; border: none; font-weight: 600; transition: all 0.3s ease;">
+                    <i class="fas fa-save me-2"></i>Lưu vào kho
+                </button>
+                <button type="button" class="btn btn-dark btn-lg px-4" data-bs-dismiss="modal" style="transition: all 0.3s ease;">Đóng</button>
+            `;
+        }
+
+        modal.show();
+    }
+
+    // Save voucher to collection
+    async function saveVoucherToCollection() {
+        if (!currentWonVoucher) {
+            alert('Không có voucher để lưu!');
+            return;
+        }
+        
+        const voucher = currentWonVoucher;
+        try {
+            const response = await fetch('/SpinWheel/SaveVoucherToCollection', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(voucher)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert('✓ ' + result.message + '\n\nVào "Kho voucher" để xem voucher đã lưu!');
+                // Close modal properly
+                const modalElement = document.getElementById('resultModal');
+                const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                if (modalInstance) {
+                    modalInstance.hide();
+                }
+                
+                // Update voucher badge
+                if (typeof window.updateVoucherBadge === 'function') {
+                    window.updateVoucherBadge();
+                }
+            } else {
+                alert('✗ ' + result.message);
+            }
+        } catch (error) {
+            alert('✗ Lỗi: ' + error.message);
+        }
+    }
+
+    // Show modal
+    function showModal(title, message, type) {
+        const modal = new bootstrap.Modal(document.getElementById('resultModal'));
+        document.getElementById('modalTitle').textContent = title;
+        document.getElementById('modalMessage').textContent = message;
+        document.getElementById('modalVoucherCode').innerHTML = '';
+        
+        const icon = type === 'warning' ? 
+            '<i class="fas fa-exclamation-circle" style="font-size: 5rem; color: #d4af37;"></i>' :
+            '<i class="fas fa-times-circle" style="font-size: 5rem; color: #1a1a1a;"></i>';
+        document.getElementById('modalIcon').innerHTML = icon;
+        
+        document.getElementById('modalButtons').innerHTML = '<button type="button" class="btn btn-dark btn-lg px-4" data-bs-dismiss="modal">Đóng</button>';
+        
+        modal.show();
+    }
+
+    // Initialize
+    loadVouchers();
+    
+    // Fix backdrop blocking clicks and ensure correct z-index after modal shows
+    document.getElementById('resultModal').addEventListener('shown.bs.modal', function () {
+        const modal = this;
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        
+        // Remove duplicates if any - keep only 1 backdrop
+        if (backdrops.length > 1) {
+            console.log(`⚠️ Found ${backdrops.length} backdrops, removing duplicates...`);
+            for (let i = 0; i < backdrops.length - 1; i++) {
+                backdrops[i].remove();
+            }
+        }
+        
+        // Get remaining backdrop after cleanup
+        const remainingBackdrops = document.querySelectorAll('.modal-backdrop');
+        
+        // CRITICAL: Ensure backdrop is BELOW modal
+        remainingBackdrops.forEach(backdrop => {
+            backdrop.style.pointerEvents = 'none';
+            backdrop.style.zIndex = '1040';
+            backdrop.style.opacity = '0.3';
+            backdrop.style.backgroundColor = 'rgba(0, 0, 0, 0.3)';
+        });
+        
+        // CRITICAL: Ensure modal is ABOVE EVERYTHING
+        modal.style.zIndex = '9999';
+        
+        const modalDialog = modal.querySelector('.modal-dialog');
+        if (modalDialog) {
+            modalDialog.style.zIndex = '10000';
+        }
+        
+        const modalContent = modal.querySelector('.modal-content');
+        if (modalContent) {
+            modalContent.style.zIndex = '10001';
+            modalContent.style.background = '#ffffff';
+        }
+        
+        console.log('✅ Modal ready:');
+        console.log(`   - Backdrops: ${remainingBackdrops.length}`);
+        console.log(`   - Backdrop z-index: 1040`);
+        console.log(`   - Modal z-index: 9999`);
+        console.log(`   - Modal Dialog z-index: 10000`);
+        console.log(`   - Modal Content z-index: 10001`);
+    });
+    
+    // Watch for backdrop creation and fix immediately
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            mutation.addedNodes.forEach(function(node) {
+                if (node.classList && node.classList.contains('modal-backdrop')) {
+                    node.style.pointerEvents = 'none';
+                    node.style.zIndex = '1040';
+                    node.style.opacity = '0.3';
+                    node.style.backgroundColor = 'rgba(0, 0, 0, 0.3)';
+                    console.log('🔧 Fixed backdrop: pointer-events=none, z-index=1040, opacity=0.3');
+                }
+            });
+        });
+    });
+    observer.observe(document.body, { childList: true });
+    
+    // Emergency cleanup function (can be called from console if needed)
+    window.clearStuckOverlay = function() {
+        document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+        console.log('Cleared all backdrops');
+    };
+    
+    // Debug function to check what's wrong
+    window.debugModal = function() {
+        console.log('=== MODAL DEBUG ===');
+        
+        const modal = document.getElementById('resultModal');
+        const modalContent = modal?.querySelector('.modal-content');
+        const modalBody = modal?.querySelector('.modal-body');
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        
+        console.log(`\n📦 Backdrops: ${backdrops.length}`);
+        backdrops.forEach((b, i) => {
+            const style = window.getComputedStyle(b);
+            console.log(`  Backdrop ${i+1}:`);
+            console.log(`    - z-index: ${style.zIndex}`);
+            console.log(`    - opacity: ${style.opacity}`);
+            console.log(`    - pointer-events: ${style.pointerEvents}`);
+            console.log(`    - background: ${style.backgroundColor}`);
+        });
+        
+        if (modal) {
+            const style = window.getComputedStyle(modal);
+            console.log(`\n🎯 Modal:`);
+            console.log(`  - z-index: ${style.zIndex}`);
+            console.log(`  - display: ${style.display}`);
+        }
+        
+        if (modalContent) {
+            const style = window.getComputedStyle(modalContent);
+            console.log(`\n📄 Modal Content:`);
+            console.log(`  - z-index: ${style.zIndex}`);
+            console.log(`  - background: ${style.backgroundColor}`);
+            console.log(`  - border: ${style.border}`);
+        }
+        
+        if (modalBody) {
+            const style = window.getComputedStyle(modalBody);
+            console.log(`\n📝 Modal Body:`);
+            console.log(`  - background: ${style.backgroundColor}`);
+        }
+        
+        console.log('\n🔧 To fix: Run clearStuckOverlay() then reload page');
+    };
+    
+    console.log('💡 Debug commands available:');
+    console.log('   - debugModal()       : Check modal and backdrop status');
+    console.log('   - clearStuckOverlay(): Clear all backdrops');
+</script>
+}

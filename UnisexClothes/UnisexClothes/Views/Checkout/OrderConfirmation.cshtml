@@ -1,0 +1,256 @@
+@{
+    ViewData["Title"] = "Đặt hàng thành công";
+}
+
+<section class="py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-10 col-lg-8">
+                <!-- Success Header -->
+                <div class="text-center mb-5">
+                    <div class="mb-4">
+                        <i class="fas fa-check-circle text-success" style="font-size: 80px;"></i>
+                    </div>
+                    <h2 class="fw-bold text-success mb-3">Đặt hàng thành công!</h2>
+                    <p class="text-muted fs-5">Cảm ơn bạn đã mua sắm tại UniStyle</p>
+                    <p class="text-muted">Đơn hàng của bạn đã được tiếp nhận và đang được xử lý</p>
+                </div>
+
+                <!-- Bill Card -->
+                <div class="card border-0 shadow-lg mb-4">
+                    <div class="card-header bg-dark text-white py-4">
+                        <div class="row align-items-center">
+                            <div class="col-md-6">
+                                <h4 class="mb-0 fw-bold">
+                                    <i class="fas fa-receipt me-2"></i>HÓA ĐƠN BÁN HÀNG
+                                </h4>
+                            </div>
+                            <div class="col-md-6 text-end">
+                                <p class="mb-0">Mã đơn hàng: <span id="orderId">US-2024-001234</span></p>
+                                <small id="orderDate"></small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-body p-4">
+                        <!-- Company Info -->
+                        <div class="row mb-4 pb-3 border-bottom">
+                            <div class="col-md-6">
+                                <h5 class="fw-bold mb-3">Thông tin người bán</h5>
+                                <p class="mb-1"><strong>UniStyle E-Commerce</strong></p>
+                                <p class="text-muted mb-1">123 Fashion Street, Quận 1, TP.HCM</p>
+                                <p class="text-muted mb-1">Phone: 0123 456 789</p>
+                                <p class="text-muted mb-0">Email: support@unistyle.vn</p>
+                            </div>
+                            <div class="col-md-6" id="customerInfo">
+                                <h5 class="fw-bold mb-3">Thông tin người mua</h5>
+                                <p class="mb-1"><strong id="customerName">Đang tải...</strong></p>
+                                <p class="text-muted mb-1" id="customerPhone">Đang tải...</p>
+                                <p class="text-muted mb-1" id="customerEmail">Đang tải...</p>
+                                <p class="text-muted mb-0" id="customerAddress">Đang tải...</p>
+                            </div>
+                        </div>
+
+                        <!-- Order Items -->
+                        <div class="mb-4">
+                            <h5 class="fw-bold mb-3">Chi tiết đơn hàng</h5>
+                            <div class="table-responsive">
+                                <table class="table table-bordered">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Sản phẩm</th>
+                                            <th class="text-center">Số lượng</th>
+                                            <th class="text-end">Đơn giá</th>
+                                            <th class="text-end">Thành tiền</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="orderItemsTable">
+                                        <!-- Loaded dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Order Summary -->
+                        <div class="border p-3 rounded bg-light">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span>Tạm tính:</span>
+                                <span class="fw-semibold" id="billSubtotal">0 ₫</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span>Vận chuyển:</span>
+                                <span class="fw-semibold text-success" id="billShipping">0 ₫</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span>Giảm giá:</span>
+                                <span class="text-success fw-semibold" id="billDiscount">0 ₫</span>
+                            </div>
+                            <hr class="my-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-bold fs-5">Tổng tiền:</span>
+                                <span class="fw-bold fs-5 text-danger" id="billTotal">0 ₫</span>
+                            </div>
+                        </div>
+
+                        <!-- Payment Info -->
+                        <div class="mt-4 pt-3 border-top" id="paymentInfo">
+                            <h5 class="fw-bold mb-3">Phương thức thanh toán</h5>
+                            <p class="mb-0" id="paymentMethod">Thanh toán khi nhận hàng (COD)</p>
+                        </div>
+                    </div>
+
+                    <div class="card-footer bg-light py-3">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Đơn hàng của bạn sẽ được giao trong vòng 3-5 ngày làm việc
+                                </small>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <button class="btn btn-outline-dark btn-sm" onclick="window.print()">
+                                    <i class="fas fa-print me-2"></i>In hóa đơn
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="text-center mt-4">
+                    <a asp-controller="Account" asp-action="MyOrders" class="btn btn-unistyle me-2">
+                        <i class="fas fa-clipboard-list me-2"></i>Xem đơn hàng của tôi
+                    </a>
+                    <a asp-controller="Product" asp-action="Shop" class="btn btn-outline-dark">
+                        <i class="fas fa-shopping-bag me-2"></i>Tiếp tục mua sắm
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    <script>
+        function formatPrice(price) {
+            return new Intl.NumberFormat('vi-VN').format(price) + ' ₫';
+        }
+
+        function loadOrderConfirmation() {
+            // Get order info from localStorage
+            const orderInfoStr = localStorage.getItem('unistyleOrderInfo');
+            const orderInfo = orderInfoStr ? JSON.parse(orderInfoStr) : null;
+            
+            if (!orderInfo || !orderInfo.cartItems || orderInfo.cartItems.length === 0) {
+                // If no order info, redirect to home
+                window.location.href = '/';
+                return;
+            }
+
+            // Display order ID
+            if (orderInfo.orderId) {
+                document.getElementById('orderId').textContent = `US-${orderInfo.orderId}`;
+            }
+
+            // Display order date
+            const now = new Date();
+            document.getElementById('orderDate').textContent = now.toLocaleString('vi-VN');
+            
+            // Display customer info
+            document.getElementById('customerName').textContent = orderInfo.fullName || 'N/A';
+            document.getElementById('customerPhone').textContent = orderInfo.phone || 'N/A';
+            document.getElementById('customerEmail').textContent = orderInfo.email || 'N/A';
+            document.getElementById('customerAddress').textContent = `${orderInfo.address || ''}, ${orderInfo.district || ''}, ${orderInfo.province || ''}`;
+            
+            // Display payment method
+            let paymentMethodText = '';
+            if (orderInfo.paymentMethod === 'cod') {
+                paymentMethodText = 'Thanh toán khi nhận hàng (COD)';
+            } else if (orderInfo.paymentMethod === 'bankTransfer') {
+                paymentMethodText = 'Chuyển khoản ngân hàng';
+            } else if (orderInfo.paymentMethod === 'card') {
+                paymentMethodText = 'Thẻ tín dụng/Ghi nợ';
+            }
+            document.getElementById('paymentMethod').textContent = paymentMethodText;
+
+            // Display order items
+            const productNames = {
+                1: "Áo Phông UniStyle",
+                2: "Áo Phông Channel",
+                3: "Áo Chanel",
+                4: "Áo Hoodie UniStyle",
+                5: "Áo Khoác UniStyle",
+                6: "Quần Short UniStyle",
+                7: "Quần Gucci UniStyle",
+                8: "Quần Jean UniStyle",
+                9: "Túi Xách Da UniStyle",
+                10: "Túi Xách Gucci",
+                11: "Đồng Hồ Moonphase",
+                12: "Đồng Hồ Titan MC"
+            };
+
+            let itemsHTML = '';
+            let subtotal = 0;
+
+            orderInfo.cartItems.forEach(item => {
+                const itemTotal = item.price * item.quantity;
+                subtotal += itemTotal;
+                const productName = productNames[item.productId] || item.name;
+                
+                itemsHTML += `
+                    <tr>
+                        <td>${productName}</td>
+                        <td class="text-center">${item.quantity}</td>
+                        <td class="text-end">${formatPrice(item.price)}</td>
+                        <td class="text-end">${formatPrice(itemTotal)}</td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('orderItemsTable').innerHTML = itemsHTML;
+
+            // Display totals from orderInfo
+            document.getElementById('billSubtotal').textContent = formatPrice(orderInfo.subtotal || subtotal);
+            
+            // Display shipping fee
+            const shippingFee = orderInfo.shippingFee || 0;
+            if (shippingFee === 0) {
+                document.getElementById('billShipping').textContent = 'Miễn phí';
+            } else {
+                document.getElementById('billShipping').textContent = formatPrice(shippingFee);
+                document.getElementById('billShipping').classList.remove('text-success');
+            }
+            
+            // Display discount
+            const discount = orderInfo.discountAmount || 0;
+            if (discount > 0) {
+                document.getElementById('billDiscount').textContent = '-' + formatPrice(discount);
+            } else {
+                document.getElementById('billDiscount').textContent = '0 ₫';
+            }
+            
+            document.getElementById('billTotal').textContent = formatPrice(orderInfo.total);
+        }
+
+        // Load on page ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                loadOrderConfirmation();
+                // Update cart badge to reflect empty cart
+                if (typeof window.updateCartBadge === 'function') {
+                    window.updateCartBadge();
+                }
+            });
+        } else {
+            loadOrderConfirmation();
+            // Update cart badge to reflect empty cart
+            if (typeof window.updateCartBadge === 'function') {
+                window.updateCartBadge();
+            }
+        }
+    </script>
+}
+
+
+
+

@@ -1,0 +1,244 @@
+@{
+    ViewData["Title"] = "Sản phẩm yêu thích";
+}
+
+<div class="container my-5">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="fw-bold">
+                    <i class="fas fa-heart text-danger me-2"></i>
+                    Sản phẩm yêu thích
+                </h2>
+                <span class="badge bg-danger" id="favoritesCountBadge" style="font-size: 1rem; padding: 8px 15px;">
+                    0 sản phẩm
+                </span>
+            </div>
+
+            <!-- Empty State -->
+            <div id="emptyFavorites" class="text-center py-5" style="display: none;">
+                <i class="fas fa-heart-broken" style="font-size: 5rem; color: #ddd; margin-bottom: 20px;"></i>
+                <h4 class="text-muted mb-3">Chưa có sản phẩm yêu thích</h4>
+                <p class="text-muted mb-4">Hãy thêm sản phẩm yêu thích của bạn để dễ dàng theo dõi!</p>
+                <a href="/Product/Shop" class="btn btn-dark">
+                    <i class="fas fa-shopping-bag me-2"></i>Khám phá sản phẩm
+                </a>
+            </div>
+
+            <!-- Favorites Grid -->
+            <div id="favoritesGrid" class="row g-4">
+                <!-- Products will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Spinner -->
+<div id="loadingSpinner" class="text-center py-5">
+    <div class="spinner-border text-dark" role="status">
+        <span class="visually-hidden">Đang tải...</span>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        loadFavorites();
+    });
+
+    // Load favorites
+    function loadFavorites() {
+        const favoritesGrid = document.getElementById('favoritesGrid');
+        const emptyFavorites = document.getElementById('emptyFavorites');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const countBadge = document.getElementById('favoritesCountBadge');
+
+        loadingSpinner.style.display = 'block';
+        favoritesGrid.style.display = 'none';
+        emptyFavorites.style.display = 'none';
+
+        fetch('/Favorites/GetFavorites')
+            .then(response => response.json())
+            .then(result => {
+                console.log('Favorites API Response:', result);
+                loadingSpinner.style.display = 'none';
+
+                if (result.success && result.data && result.data.length > 0) {
+                    console.log('Found', result.data.length, 'favorites');
+                    favoritesGrid.style.display = 'flex';
+                    favoritesGrid.innerHTML = '';
+                    countBadge.textContent = result.data.length + ' sản phẩm';
+
+                    result.data.forEach(item => {
+                        const productCard = createProductCard(item);
+                        favoritesGrid.innerHTML += productCard;
+                    });
+                } else {
+                    console.log('No favorites found or error:', result);
+                    emptyFavorites.style.display = 'block';
+                    countBadge.textContent = '0 sản phẩm';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading favorites:', error);
+                loadingSpinner.style.display = 'none';
+                emptyFavorites.style.display = 'block';
+                countBadge.textContent = '0 sản phẩm';
+            });
+    }
+
+    // Create product card
+    function createProductCard(item) {
+        const discountBadge = item.discount > 0 
+            ? `<span class="badge bg-danger position-absolute top-0 start-0 m-2">-${item.discount}%</span>` 
+            : '';
+        
+        const priceHTML = item.discount > 0 
+            ? `<span class="text-danger fw-bold fs-5">${formatCurrency(item.salePrice)}</span>
+               <small class="text-muted text-decoration-line-through ms-2">${formatCurrency(item.price)}</small>`
+            : `<span class="text-dark fw-bold fs-5">${formatCurrency(item.price)}</span>`;
+
+        const stockStatus = item.stock > 0 
+            ? `<span class="badge bg-success">Còn hàng</span>`
+            : `<span class="badge bg-danger">Hết hàng</span>`;
+
+        return `
+            <div class="col-md-4 col-lg-3">
+                <div class="card h-100 shadow-sm border-0 position-relative" style="transition: all 0.3s ease;">
+                    ${discountBadge}
+                    <button class="btn btn-light btn-sm position-absolute top-0 end-0 m-2 rounded-circle" 
+                            style="width: 40px; height: 40px; z-index: 10;"
+                            onclick="removeFromFavorites(${item.favoriteId}, ${item.productId})">
+                        <i class="fas fa-times text-danger"></i>
+                    </button>
+                    <a href="/Product/Detail/${item.productId}" style="text-decoration: none; color: inherit;">
+                        <img src="${item.productImage}" class="card-img-top" alt="${item.productName}" 
+                             style="height: 300px; object-fit: cover;">
+                        <div class="card-body">
+                            <h6 class="card-title text-dark mb-2" style="min-height: 50px; overflow: hidden; text-overflow: ellipsis;">
+                                ${item.productName}
+                            </h6>
+                            <div class="mb-2">
+                                ${priceHTML}
+                            </div>
+                            <div class="mb-3">
+                                ${stockStatus}
+                            </div>
+                        </div>
+                    </a>
+                    <div class="card-footer bg-white border-0">
+                        <button class="btn btn-dark w-100" onclick="addToCartFromFavorites(${item.productId}, event)">
+                            <i class="fas fa-shopping-cart me-2"></i>Thêm vào giỏ
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Remove from favorites
+    function removeFromFavorites(favoriteId, productId) {
+        if (!confirm('Bạn có chắc muốn xóa sản phẩm này khỏi danh sách yêu thích?')) {
+            return;
+        }
+
+        fetch('/Favorites/RemoveFromFavorites', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ favoriteId: favoriteId })
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                showToast(result.message, 'success');
+                loadFavorites();
+                // Update favorites count in header
+                if (typeof window.updateFavoritesBadge === 'function') {
+                    window.updateFavoritesBadge();
+                }
+            } else {
+                showToast(result.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Có lỗi xảy ra!', 'error');
+        });
+    }
+
+    // Add to cart from favorites
+    function addToCartFromFavorites(productId, event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        fetch('/Cart/AddToCart', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                productId: productId, 
+                quantity: 1,
+                variantId: null
+            })
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                showToast('Đã thêm sản phẩm vào giỏ hàng!', 'success');
+                // Update cart count in header
+                if (typeof window.updateCartBadge === 'function') {
+                    window.updateCartBadge();
+                }
+            } else {
+                showToast(result.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Có lỗi xảy ra!', 'error');
+        });
+    }
+
+    // Format currency
+    function formatCurrency(amount) {
+        return new Intl.NumberFormat('vi-VN', { 
+            style: 'currency', 
+            currency: 'VND' 
+        }).format(amount);
+    }
+
+    // Show toast notification
+    function showToast(message, type = 'success') {
+        const toast = document.getElementById('toast');
+        const toastMessage = document.getElementById('toastMessage');
+        const toastHeader = toast.querySelector('.toast-header');
+        
+        if (type === 'success') {
+            toastHeader.className = 'toast-header bg-success text-white d-flex justify-content-between align-items-center';
+            toastHeader.innerHTML = '<strong class="d-flex align-items-center"><i class="fas fa-check-circle me-2"></i>Thành công!</strong><button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>';
+        } else {
+            toastHeader.className = 'toast-header bg-danger text-white d-flex justify-content-between align-items-center';
+            toastHeader.innerHTML = '<strong class="d-flex align-items-center"><i class="fas fa-exclamation-circle me-2"></i>Lỗi!</strong><button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>';
+        }
+        
+        toastMessage.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle text-success' : 'fa-exclamation-circle text-danger'} me-2"></i>${message}`;
+        
+        const bsToast = new bootstrap.Toast(toast);
+        bsToast.show();
+    }
+</script>
+
+<style>
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    .card img {
+        transition: transform 0.3s ease;
+    }
+
+    .card:hover img {
+        transform: scale(1.05);
+    }
+</style>
+}

@@ -1,0 +1,493 @@
+@{
+    ViewData["Title"] = "Quản lý Người dùng";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <h2><i class="fas fa-users"></i> Quản lý Người dùng</h2>
+        <p class="text-muted">Danh sách tất cả người dùng</p>
+    </div>
+    <div class="col-md-6 text-end">
+        <button class="btn btn-primary" onclick="openUserModal(0)">
+            <i class="fas fa-plus"></i> Thêm người dùng
+        </button>
+    </div>
+</div>
+
+<!-- Statistics -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <h3 class="text-primary" id="totalUsers">0</h3>
+                <p class="mb-0 text-muted">Tổng người dùng</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <h3 class="text-success" id="activeUsers">0</h3>
+                <p class="mb-0 text-muted">Đang hoạt động</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <h3 class="text-warning" id="inactiveUsers">0</h3>
+                <p class="mb-0 text-muted">Đã khóa</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-5">
+                <input type="text" class="form-control" placeholder="Tìm kiếm theo tên, email, SĐT..." id="searchUser" onkeyup="debounceSearch()">
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" id="filterRole" onchange="loadUsers()">
+                    <option value="">Tất cả vai trò</option>
+                    <option value="admin">Admin</option>
+                    <option value="customer">Khách hàng</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" id="filterStatus" onchange="loadUsers()">
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="active">Hoạt động</option>
+                    <option value="inactive">Khóa</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-secondary w-100" onclick="loadUsers()">
+                    <i class="fas fa-filter"></i> Lọc
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Users Table -->
+<div class="card border-0 shadow-sm">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Họ tên</th>
+                        <th>Email</th>
+                        <th>Số điện thoại</th>
+                        <th>Đơn hàng</th>
+                        <th>Trạng thái</th>
+                        <th>Ngày đăng ký</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTable">
+                    <tr>
+                        <td colspan="8" class="text-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Đang tải...</span>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit User Modal -->
+<div class="modal fade" id="userModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="userModalTitle"><i class="fas fa-user-plus"></i> Thêm người dùng mới</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="userForm">
+                    <input type="hidden" id="userId" value="0">
+                    <div class="mb-3">
+                        <label class="form-label">Họ tên <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="fullName" required placeholder="Nhập họ tên">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email <span class="text-danger">*</span></label>
+                        <input type="email" class="form-control" id="email" required placeholder="example@email.com">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Số điện thoại</label>
+                        <input type="tel" class="form-control" id="phoneNumber" placeholder="0901234567">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Mật khẩu <span id="passwordRequired" class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="password" placeholder="Để trống nếu không đổi">
+                        <small class="text-muted" id="passwordHint">Chỉ cần nhập khi thêm người dùng mới hoặc muốn đổi mật khẩu</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Vai trò <span class="text-danger">*</span></label>
+                        <select class="form-select" id="role" required>
+                            <option value="customer">Khách hàng</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="isActive" checked>
+                            <label class="form-check-label" for="isActive">Kích hoạt người dùng</label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" onclick="saveUser()">Lưu</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <style>
+        /* 🔧 CRITICAL FIX: Backdrop pointer-events */
+        .modal-backdrop {
+            pointer-events: none !important;
+        }
+        .modal-backdrop.show {
+            pointer-events: none !important;
+        }
+    </style>
+    
+    <script>
+        let users = [];
+        let searchTimeout;
+
+        // 🔧 CRITICAL FIX: MutationObserver to fix backdrop pointer-events immediately
+        const backdropObserver = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                mutation.addedNodes.forEach(function(node) {
+                    if (node.classList && node.classList.contains('modal-backdrop')) {
+                        node.style.pointerEvents = 'none';
+                        console.log('🔧 Fixed backdrop pointer-events immediately');
+                    }
+                });
+            });
+        });
+        backdropObserver.observe(document.body, { childList: true });
+        console.log('👁️ MutationObserver watching for backdrop additions...');
+
+        document.addEventListener('DOMContentLoaded', function () {
+            // 🔧 CRITICAL FIX: Fix backdrops on page load
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            backdrops.forEach(backdrop => {
+                backdrop.style.pointerEvents = 'none';
+            });
+            
+            loadUsers();
+            
+            // 🔧 CRITICAL FIX: Add event listeners to user modal
+            const userModalElement = document.getElementById('userModal');
+            if (userModalElement) {
+                userModalElement.addEventListener('show.bs.modal', function() {
+                    const backdrops = document.querySelectorAll('.modal-backdrop');
+                    backdrops.forEach(backdrop => {
+                        backdrop.style.pointerEvents = 'none';
+                    });
+                    console.log('🔧 Before modal show: Fixed backdrop pointer-events');
+                });
+                
+                userModalElement.addEventListener('shown.bs.modal', function() {
+                    const backdrops = document.querySelectorAll('.modal-backdrop');
+                    backdrops.forEach(backdrop => {
+                        backdrop.style.pointerEvents = 'none';
+                    });
+                    console.log('🔧 After modal shown: Fixed backdrop pointer-events');
+                });
+            }
+        });
+
+        async function loadUsers() {
+            try {
+                const search = document.getElementById('searchUser').value.trim();
+                const role = document.getElementById('filterRole').value;
+                const status = document.getElementById('filterStatus').value;
+
+                const params = new URLSearchParams();
+                if (search) params.append('search', search);
+                if (role) params.append('role', role);
+                if (status) params.append('status', status);
+
+                const response = await fetch(`/Admin/GetUsers?${params.toString()}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    users = result.data;
+                    renderUsers();
+                    updateStatistics();
+                } else {
+                    alert(result.message || 'Không thể tải danh sách người dùng!');
+                }
+            } catch (error) {
+                console.error('Error loading users:', error);
+                alert('Có lỗi xảy ra khi tải danh sách người dùng!');
+            }
+        }
+
+        function renderUsers() {
+            const tableBody = document.getElementById('usersTable');
+            tableBody.innerHTML = '';
+
+            if (users.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Không có người dùng nào</td></tr>';
+                return;
+            }
+
+            users.forEach(user => {
+                const roleText = user.role === 'admin' ? 'Admin' : 'Khách hàng';
+                const statusText = user.status === 'active' ? 'Hoạt động' : 'Đã khóa';
+                const statusBadge = user.status === 'active' ? 'success' : 'danger';
+
+                const row = `
+                    <tr>
+                        <td>${String(user.id).padStart(3, '0')}</td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="avatar me-2">
+                                    <i class="fas fa-user-circle fa-2x text-secondary"></i>
+                                </div>
+                                <div>
+                                    <strong>${user.name}</strong>
+                                    <br><small class="text-muted">${roleText}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>${user.email}</td>
+                        <td>${user.phone || '-'}</td>
+                        <td><span class="badge bg-primary">${user.orders} đơn</span></td>
+                        <td><span class="badge bg-${statusBadge}">${statusText}</span></td>
+                        <td>${user.createdAt}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-warning" title="Chỉnh sửa" onclick="openUserModal(${user.id})">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-${user.status === 'active' ? 'danger' : 'success'}" 
+                                    title="${user.status === 'active' ? 'Khóa' : 'Mở khóa'}" 
+                                    onclick="toggleUserLock(${user.id}, ${user.status === 'active'})">
+                                <i class="fas fa-${user.status === 'active' ? 'lock' : 'unlock'}"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" title="Xóa" onclick="deleteUser(${user.id}, '${user.name.replace(/'/g, "\\'")}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+        }
+
+        function updateStatistics() {
+            const total = users.length;
+            const active = users.filter(u => u.status === 'active').length;
+            const inactive = users.filter(u => u.status === 'inactive').length;
+
+            document.getElementById('totalUsers').textContent = total;
+            document.getElementById('activeUsers').textContent = active;
+            document.getElementById('inactiveUsers').textContent = inactive;
+        }
+
+        function openUserModal(userId = 0) {
+            const user = userId > 0 ? users.find(u => u.id === userId) : null;
+
+            document.getElementById('userId').value = userId;
+            document.getElementById('fullName').value = user ? user.name : '';
+            document.getElementById('email').value = user ? user.email : '';
+            document.getElementById('phoneNumber').value = user ? user.phone : '';
+            document.getElementById('password').value = '';
+            document.getElementById('role').value = user ? user.role : 'customer';
+            document.getElementById('isActive').checked = user ? user.status === 'active' : true;
+
+            document.getElementById('userModalTitle').innerHTML = userId === 0 
+                ? '<i class="fas fa-user-plus"></i> Thêm người dùng mới' 
+                : '<i class="fas fa-edit"></i> Sửa người dùng';
+
+            const passwordRequired = document.getElementById('passwordRequired');
+            const passwordHint = document.getElementById('passwordHint');
+            if (userId > 0) {
+                passwordRequired.style.display = 'none';
+                passwordHint.textContent = 'Để trống nếu không muốn đổi mật khẩu';
+            } else {
+                passwordRequired.style.display = 'inline';
+                passwordHint.textContent = 'Mật khẩu bắt buộc khi thêm người dùng mới';
+            }
+
+            // 🔧 CRITICAL FIX: Pre-set backdrop pointer-events before modal shows
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            backdrops.forEach(backdrop => {
+                backdrop.style.pointerEvents = 'none';
+            });
+            console.log('🔧 Pre-set backdrop pointer-events to none');
+
+            const modal = new bootstrap.Modal(document.getElementById('userModal'));
+            modal.show();
+        }
+
+        async function saveUser() {
+            const userId = parseInt(document.getElementById('userId').value);
+            const fullName = document.getElementById('fullName').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const phoneNumber = document.getElementById('phoneNumber').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const role = document.getElementById('role').value;
+            const isActive = document.getElementById('isActive').checked;
+
+            if (!fullName || !email) {
+                alert('Vui lòng điền đầy đủ thông tin bắt buộc!');
+                return;
+            }
+
+            if (userId === 0 && !password) {
+                alert('Vui lòng nhập mật khẩu khi thêm người dùng mới!');
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('userId', userId);
+                formData.append('fullName', fullName);
+                formData.append('email', email);
+                formData.append('phoneNumber', phoneNumber);
+                if (password) formData.append('password', password);
+                formData.append('role', role);
+                formData.append('isActive', isActive);
+
+                const response = await fetch('/Admin/UserEdit', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('userModal'));
+                    modal.hide();
+                    alert(result.message);
+                    loadUsers();
+                } else {
+                    alert(result.message || 'Lưu người dùng thất bại!');
+                }
+            } catch (error) {
+                console.error('Error saving user:', error);
+                alert('Có lỗi xảy ra khi lưu người dùng!');
+            }
+        }
+
+        async function deleteUser(id, name) {
+            if (!confirm(`Bạn có chắc chắn muốn xóa người dùng "${name}"?`)) {
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('id', id);
+
+                const response = await fetch('/Admin/UserDelete', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(result.message);
+                    loadUsers();
+                } else {
+                    alert(result.message || 'Xóa người dùng thất bại!');
+                }
+            } catch (error) {
+                console.error('Error deleting user:', error);
+                alert('Có lỗi xảy ra khi xóa người dùng!');
+            }
+        }
+
+        async function toggleUserLock(id, currentlyActive) {
+            const action = currentlyActive ? 'khóa' : 'mở khóa';
+            if (!confirm(`Bạn có chắc chắn muốn ${action} người dùng này?`)) {
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('id', id);
+                formData.append('lockUser', currentlyActive);
+
+                const response = await fetch('/Admin/UserLock', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(result.message);
+                    loadUsers();
+                } else {
+                    alert(result.message || `${action} người dùng thất bại!`);
+                }
+            } catch (error) {
+                console.error('Error toggling user lock:', error);
+                alert(`Có lỗi xảy ra khi ${action} người dùng!`);
+            }
+        }
+
+        function debounceSearch() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                loadUsers();
+            }, 500);
+        }
+
+        // 🔧 CRITICAL FIX: Debugging helper functions
+        window.debugUserModalBackdrop = function() {
+            console.log('=== USER MODAL BACKDROP DEBUG ===');
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            console.log(`Found ${backdrops.length} backdrop(s)`);
+            
+            backdrops.forEach((backdrop, index) => {
+                const computed = window.getComputedStyle(backdrop);
+                console.log(`Backdrop #${index + 1}:`, {
+                    pointerEvents: computed.pointerEvents,
+                    zIndex: computed.zIndex
+                });
+                
+                if (computed.pointerEvents !== 'none') {
+                    console.error(`❌ Backdrop #${index + 1} has pointer-events: ${computed.pointerEvents}`);
+                } else {
+                    console.log(`✅ Backdrop #${index + 1} has correct pointer-events: none`);
+                }
+            });
+        };
+
+        window.fixUserModalBackdrop = function() {
+            console.log('🔧 Manually fixing user modal backdrop...');
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            backdrops.forEach((backdrop, index) => {
+                backdrop.style.pointerEvents = 'none';
+                backdrop.style.setProperty('pointer-events', 'none', 'important');
+                console.log(`Fixed backdrop #${index + 1}`);
+            });
+            console.log('✅ Done!');
+        };
+
+        console.log('📋 User Modal Debug Commands:');
+        console.log('   debugUserModalBackdrop()  - Check backdrop status');
+        console.log('   fixUserModalBackdrop()    - Manually fix backdrop');
+    </script>
+}

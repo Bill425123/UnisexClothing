@@ -1,0 +1,309 @@
+@{
+    ViewData["Title"] = ViewBag.IsEdit ? "Sửa sản phẩm" : "Thêm sản phẩm";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="row mb-4">
+    <div class="col-12">
+        <a asp-controller="Admin" asp-action="Products" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Quay lại danh sách
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-@(ViewBag.IsEdit ? "edit" : "plus")"></i> 
+                    @(ViewBag.IsEdit ? "Chỉnh sửa sản phẩm" : "Thêm sản phẩm mới")
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="productForm">
+                    <input type="hidden" name="productId" value="@ViewBag.ProductId">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Tên sản phẩm <span class="text-danger">*</span></label>
+                        <input type="text" name="productName" class="form-control" placeholder="Nhập tên sản phẩm" 
+                               value="@ViewBag.Product?.ProductName" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Danh mục <span class="text-danger">*</span></label>
+                        <select name="categoryId" id="categorySelect" class="form-select" required>
+                            <option value="">-- Chọn danh mục --</option>
+                            @{
+                                var catId = ViewBag.Product?.CategoryId;
+                            }
+                            @if (ViewBag.Categories != null)
+                            {
+                                foreach (var category in ViewBag.Categories)
+                                {
+                                    <option value="@category.CategoryId" selected="@(catId == category.CategoryId)">
+                                        @category.CategoryName
+                                    </option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Giá (VNĐ) <span class="text-danger">*</span></label>
+                            <input type="number" name="price" class="form-control" placeholder="399000" 
+                                   value="@ViewBag.Product?.Price" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Giảm giá (%)</label>
+                            <input type="number" name="discountPercent" class="form-control" placeholder="20" 
+                                   value="@ViewBag.Product?.DiscountPercent" min="0" max="100">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Tồn kho</label>
+                            <input type="number" name="stockQuantity" class="form-control" placeholder="100" 
+                                   value="@ViewBag.Product?.StockQuantity" min="0">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Mô tả sản phẩm</label>
+                        <textarea name="description" class="form-control" rows="5" 
+                                  placeholder="Mô tả chi tiết về sản phẩm...">@ViewBag.Product?.Description</textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Hình ảnh sản phẩm</label>
+                        
+                        <!-- Option 1: Upload file -->
+                        <div class="mb-2">
+                            <label class="form-label small">
+                                <i class="fas fa-upload"></i> Chọn file từ máy tính:
+                            </label>
+                            <input type="file" id="imageFile" class="form-control" onchange="handleFileSelect(this)">
+                            <small class="text-muted">Cho phép tải lên mọi loại file, không giới hạn dung lượng</small>
+                        </div>
+
+                        <!-- Option 2: Enter URL -->
+                        <div class="mt-3">
+                            <label class="form-label small">
+                                <i class="fas fa-link"></i> Hoặc nhập URL:
+                            </label>
+                            <input type="text" id="imageUrl" name="productImage" class="form-control" 
+                                   placeholder="/images/HinhSanPhamUnisex/product1.jpg" 
+                                   value="@ViewBag.Product?.ProductImage"
+                                   onchange="previewUrl(this.value)">
+                        </div>
+                    </div>
+
+                    <div class="mb-3" id="imagePreview">
+                        <label class="form-label">Xem trước:</label>
+                        <div>
+                            <img id="preview" src="@ViewBag.Product?.ProductImage" alt="Preview" 
+                                 class="img-thumbnail" style="max-width: 300px; max-height: 300px; @(ViewBag.Product?.ProductImage != null ? "" : "display:none;")">
+                            <p id="noImage" class="text-muted" style="@(ViewBag.Product?.ProductImage != null ? "display:none;" : "")">
+                                <i class="fas fa-image"></i> Chưa có hình ảnh
+                            </p>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="btn btn-outline-secondary" onclick="window.history.back()">
+                            <i class="fas fa-times"></i> Hủy
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> @(ViewBag.IsEdit ? "Cập nhật" : "Thêm mới")
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header bg-white">
+                <h6 class="mb-0"><i class="fas fa-palette"></i> Màu sắc</h6>
+            </div>
+            <div class="card-body">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="black" id="colorBlack">
+                    <label class="form-check-label" for="colorBlack">Đen</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="white" id="colorWhite">
+                    <label class="form-check-label" for="colorWhite">Trắng</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="gray" id="colorGray">
+                    <label class="form-check-label" for="colorGray">Xám</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="blue" id="colorBlue">
+                    <label class="form-check-label" for="colorBlue">Xanh dương</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="red" id="colorRed">
+                    <label class="form-check-label" for="colorRed">Đỏ</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white">
+                <h6 class="mb-0"><i class="fas fa-ruler"></i> Kích thước</h6>
+            </div>
+            <div class="card-body">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="S" id="sizeS">
+                    <label class="form-check-label" for="sizeS">S</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="M" id="sizeM">
+                    <label class="form-check-label" for="sizeM">M</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="L" id="sizeL">
+                    <label class="form-check-label" for="sizeL">L</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="XL" id="sizeXL">
+                    <label class="form-check-label" for="sizeXL">XL</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="XXL" id="sizeXXL">
+                    <label class="form-check-label" for="sizeXXL">XXL</label>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Handle file selection
+        function handleFileSelect(input) {
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                
+                // Preview nếu là ảnh; file khác thì ẩn preview
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('preview');
+                    const noImage = document.getElementById('noImage');
+                    
+                    if (file.type && file.type.startsWith('image/')) {
+                        preview.src = e.target.result;
+                        preview.style.display = 'block';
+                        noImage.style.display = 'none';
+                    } else {
+                        preview.style.display = 'none';
+                        noImage.style.display = 'block';
+                    }
+                    
+                    // Generate filename and update imageUrl field
+                    const timestamp = Date.now();
+                    const ext = file.name.split('.').pop();
+                    const filename = `product_${timestamp}.${ext}`;
+                    document.getElementById('imageUrl').value = `/images/HinhSanPhamUnisex/${filename}`;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Preview from URL
+        function previewUrl(url) {
+            const preview = document.getElementById('preview');
+            const noImage = document.getElementById('noImage');
+            
+            if (url) {
+                preview.src = url;
+                preview.style.display = 'block';
+                noImage.style.display = 'none';
+            } else {
+                preview.style.display = 'none';
+                noImage.style.display = 'block';
+            }
+        }
+
+        // Upload image file to server
+        async function uploadImageFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            const response = await fetch('/Admin/UploadImage', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                return result.url;
+            } else {
+                throw new Error(result.message || 'Upload failed');
+            }
+        }
+
+        document.getElementById('productForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Check if file is selected and upload it first
+            const fileInput = document.getElementById('imageFile');
+            if (fileInput.files && fileInput.files[0]) {
+                try {
+                    const uploadedUrl = await uploadImageFile(fileInput.files[0]);
+                    if (uploadedUrl) {
+                        document.getElementById('imageUrl').value = uploadedUrl;
+                    }
+                } catch (error) {
+                    console.error('Upload error:', error);
+                    alert('Lỗi upload hình ảnh: ' + error.message);
+                    return;
+                }
+            }
+            
+            // Collect form data
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+            
+            // Remove file from data (already uploaded)
+            delete data.imageFile;
+            
+            // Send to server
+            fetch('/Admin/ProductEdit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    // Show success message
+                    if (typeof showToast === 'function') {
+                        showToast(result.message);
+                    } else {
+                        alert(result.message);
+                    }
+                    
+                    // Redirect after 1 second
+                    setTimeout(function() {
+                        window.location.href = '/Admin/Products';
+                    }, 1000);
+                } else {
+                    alert('Lỗi: ' + result.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Có lỗi xảy ra khi lưu sản phẩm!');
+            });
+        });
+    </script>
+}
+
+

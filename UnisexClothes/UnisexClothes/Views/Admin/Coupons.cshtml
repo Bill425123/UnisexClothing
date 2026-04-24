@@ -1,0 +1,412 @@
+@{
+    ViewData["Title"] = "Quản lý Coupon";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="mb-0">
+                <i class="fas fa-ticket-alt me-2"></i>Quản lý Coupon
+            </h2>
+            <p class="text-muted">Tạo và quản lý mã giảm giá</p>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-12">
+            <button class="btn btn-primary" onclick="showCouponModal()">
+                <i class="fas fa-plus me-2"></i>Thêm Coupon
+            </button>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="couponTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Mã Coupon</th>
+                                    <th>Giảm giá</th>
+                                    <th>Trạng thái</th>
+                                    <th>Ngày tạo</th>
+                                    <th>Ngày hết hạn</th>
+                                    <th>Ngày sử dụng</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="couponTableBody">
+                                <tr>
+                                    <td colspan="8" class="text-center">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Coupon Modal -->
+<div class="modal fade" id="couponModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-ticket-alt me-2"></i>
+                    <span id="modalTitle">Thêm Coupon</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="couponForm">
+                    <input type="hidden" id="couponId">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="fas fa-code me-1"></i>Mã Coupon *
+                        </label>
+                        <input type="text" class="form-control" id="couponCode" 
+                               placeholder="VD: SUMMER2024" maxlength="30" required
+                               style="text-transform: uppercase;">
+                        <small class="text-muted">Tối đa 30 ký tự</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="fas fa-money-bill-wave me-1"></i>Số tiền giảm (₫) *
+                        </label>
+                        <input type="number" class="form-control" id="discountAmount" 
+                               placeholder="VD: 50000" min="0" max="9999999" required>
+                        <small class="text-muted">Tối đa 9,999,999₫</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="fas fa-calendar-alt me-1"></i>Ngày hết hạn *
+                        </label>
+                        <input type="date" class="form-control" id="expiryDate" required>
+                    </div>
+
+                    <div class="mb-3" id="isUsedGroup" style="display: none;">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="isUsed">
+                            <label class="form-check-label" for="isUsed">
+                                Đã sử dụng
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" onclick="saveCoupon()">
+                    <i class="fas fa-save me-2"></i>Lưu
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<style>
+    /* 🔧 CRITICAL FIX: Backdrop pointer-events */
+    .modal-backdrop {
+        pointer-events: none !important;
+    }
+    .modal-backdrop.show {
+        pointer-events: none !important;
+    }
+</style>
+
+<script>
+    let couponModal;
+
+    // 🔧 CRITICAL FIX: MutationObserver to fix backdrop pointer-events immediately
+    const backdropObserver = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            mutation.addedNodes.forEach(function(node) {
+                if (node.classList && node.classList.contains('modal-backdrop')) {
+                    node.style.pointerEvents = 'none';
+                    console.log('🔧 Fixed backdrop pointer-events immediately');
+                }
+            });
+        });
+    });
+    backdropObserver.observe(document.body, { childList: true });
+    console.log('👁️ MutationObserver watching for backdrop additions...');
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // 🔧 CRITICAL FIX: Fix backdrops on page load
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        backdrops.forEach(backdrop => {
+            backdrop.style.pointerEvents = 'none';
+        });
+        
+        couponModal = new bootstrap.Modal(document.getElementById('couponModal'));
+        loadCoupons();
+        
+        // 🔧 CRITICAL FIX: Add event listeners to coupon modal
+        const couponModalElement = document.getElementById('couponModal');
+        if (couponModalElement) {
+            couponModalElement.addEventListener('show.bs.modal', function() {
+                const backdrops = document.querySelectorAll('.modal-backdrop');
+                backdrops.forEach(backdrop => {
+                    backdrop.style.pointerEvents = 'none';
+                });
+                console.log('🔧 Before modal show: Fixed backdrop pointer-events');
+            });
+            
+            couponModalElement.addEventListener('shown.bs.modal', function() {
+                const backdrops = document.querySelectorAll('.modal-backdrop');
+                backdrops.forEach(backdrop => {
+                    backdrop.style.pointerEvents = 'none';
+                });
+                console.log('🔧 After modal shown: Fixed backdrop pointer-events');
+            });
+        }
+    });
+
+    // Load coupons
+    async function loadCoupons() {
+        try {
+            const response = await fetch('/Admin/GetCoupons');
+            const result = await response.json();
+
+            if (result.success) {
+                renderCoupons(result.data);
+            } else {
+                showError(result.message);
+            }
+        } catch (error) {
+            showError('Lỗi tải dữ liệu: ' + error.message);
+        }
+    }
+
+    // Render coupons table
+    function renderCoupons(coupons) {
+        const tbody = document.getElementById('couponTableBody');
+        
+        if (coupons.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Chưa có coupon nào</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = coupons.map(c => `
+            <tr>
+                <td>${c.id}</td>
+                <td><code class="text-primary">${c.code || ''}</code></td>
+                <td><strong>${formatCurrency(c.discountAmount)}</strong></td>
+                <td>
+                    ${c.isUsed ? 
+                        '<span class="badge bg-secondary">Đã dùng</span>' : 
+                        '<span class="badge bg-success">Chưa dùng</span>'}
+                </td>
+                <td>${formatDate(c.createdDate)}</td>
+                <td>${formatDate(c.expiryDate)}</td>
+                <td>${c.usedDate ? formatDate(c.usedDate) : '<span class="text-muted">-</span>'}</td>
+                <td>
+                    <button class="btn btn-sm btn-info" onclick="editCoupon(${c.id})" title="Sửa">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteCoupon(${c.id})" title="Xóa">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    // Show modal for adding
+    function showCouponModal() {
+        document.getElementById('modalTitle').textContent = 'Thêm Coupon';
+        document.getElementById('couponForm').reset();
+        document.getElementById('couponId').value = '0';
+        document.getElementById('isUsedGroup').style.display = 'none';
+        
+        // Set default expiry date (30 days from now)
+        const defaultDate = new Date();
+        defaultDate.setDate(defaultDate.getDate() + 30);
+        document.getElementById('expiryDate').value = defaultDate.toISOString().split('T')[0];
+        
+        // 🔧 CRITICAL FIX: Pre-set backdrop pointer-events before modal shows
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        backdrops.forEach(backdrop => {
+            backdrop.style.pointerEvents = 'none';
+        });
+        console.log('🔧 Pre-set backdrop pointer-events to none');
+        
+        couponModal.show();
+    }
+
+    // Edit coupon
+    async function editCoupon(id) {
+        try {
+            const response = await fetch('/Admin/GetCoupons');
+            const result = await response.json();
+
+            if (result.success) {
+                const coupon = result.data.find(c => c.id === id);
+                if (coupon) {
+                    document.getElementById('modalTitle').textContent = 'Sửa Coupon';
+                    document.getElementById('couponId').value = coupon.id;
+                    document.getElementById('couponCode').value = coupon.code;
+                    document.getElementById('discountAmount').value = coupon.discountAmount;
+                    document.getElementById('expiryDate').value = coupon.expiryDate ? coupon.expiryDate.split('T')[0] : '';
+                    document.getElementById('isUsed').checked = coupon.isUsed;
+                    document.getElementById('isUsedGroup').style.display = 'block';
+                    
+                    // 🔧 CRITICAL FIX: Pre-set backdrop pointer-events before modal shows
+                    const backdrops = document.querySelectorAll('.modal-backdrop');
+                    backdrops.forEach(backdrop => {
+                        backdrop.style.pointerEvents = 'none';
+                    });
+                    console.log('🔧 Pre-set backdrop pointer-events to none');
+                    
+                    couponModal.show();
+                }
+            }
+        } catch (error) {
+            showError('Lỗi: ' + error.message);
+        }
+    }
+
+    // Save coupon
+    async function saveCoupon() {
+        const code = document.getElementById('couponCode').value.trim().toUpperCase();
+        const discountAmount = parseFloat(document.getElementById('discountAmount').value);
+        const expiryDate = document.getElementById('expiryDate').value;
+        const couponId = parseInt(document.getElementById('couponId').value);
+
+        if (!code || !discountAmount || !expiryDate) {
+            alert('Vui lòng điền đầy đủ thông tin!');
+            return;
+        }
+
+        if (code.length > 30) {
+            alert('Mã coupon tối đa 30 ký tự!');
+            return;
+        }
+
+        if (discountAmount < 0 || discountAmount > 9999999) {
+            alert('Số tiền giảm phải từ 0₫ đến 9,999,999₫!');
+            return;
+        }
+
+        const data = {
+            couponId: couponId,
+            code: code,
+            discountAmount: discountAmount,
+            expiryDate: expiryDate,
+            isUsed: couponId > 0 ? document.getElementById('isUsed').checked : false
+        };
+
+        try {
+            const response = await fetch('/Admin/SaveCoupon', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                couponModal.hide();
+                loadCoupons();
+                showSuccess(result.message);
+            } else {
+                showError(result.message);
+            }
+        } catch (error) {
+            showError('Lỗi: ' + error.message);
+        }
+    }
+
+    // Delete coupon
+    async function deleteCoupon(id) {
+        if (!confirm('Bạn có chắc muốn xóa coupon này?')) return;
+
+        try {
+            const response = await fetch('/Admin/DeleteCoupon?id=' + id, {
+                method: 'POST'
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                loadCoupons();
+                showSuccess(result.message);
+            } else {
+                showError(result.message);
+            }
+        } catch (error) {
+            showError('Lỗi: ' + error.message);
+        }
+    }
+
+    // Helper functions
+    function formatCurrency(value) {
+        if (!value) return '0₫';
+        return new Intl.NumberFormat('vi-VN').format(value) + '₫';
+    }
+
+    function formatDate(dateString) {
+        if (!dateString) return '-';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('vi-VN');
+    }
+
+    function showSuccess(message) {
+        alert('✓ ' + message);
+    }
+
+    function showError(message) {
+        alert('✗ ' + message);
+    }
+
+    // 🔧 CRITICAL FIX: Debugging helper functions
+    window.debugCouponModalBackdrop = function() {
+        console.log('=== COUPON MODAL BACKDROP DEBUG ===');
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        console.log(`Found ${backdrops.length} backdrop(s)`);
+        
+        backdrops.forEach((backdrop, index) => {
+            const computed = window.getComputedStyle(backdrop);
+            console.log(`Backdrop #${index + 1}:`, {
+                pointerEvents: computed.pointerEvents,
+                zIndex: computed.zIndex
+            });
+            
+            if (computed.pointerEvents !== 'none') {
+                console.error(`❌ Backdrop #${index + 1} has pointer-events: ${computed.pointerEvents}`);
+            } else {
+                console.log(`✅ Backdrop #${index + 1} has correct pointer-events: none`);
+            }
+        });
+    };
+
+    window.fixCouponModalBackdrop = function() {
+        console.log('🔧 Manually fixing coupon modal backdrop...');
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        backdrops.forEach((backdrop, index) => {
+            backdrop.style.pointerEvents = 'none';
+            backdrop.style.setProperty('pointer-events', 'none', 'important');
+            console.log(`Fixed backdrop #${index + 1}`);
+        });
+        console.log('✅ Done!');
+    };
+
+    console.log('📋 Coupon Modal Debug Commands:');
+    console.log('   debugCouponModalBackdrop()  - Check backdrop status');
+    console.log('   fixCouponModalBackdrop()    - Manually fix backdrop');
+</script>
+}

@@ -1,0 +1,235 @@
+@model UnisexClothes.Models.Order
+@{
+    ViewData["Title"] = $"Chi tiết đơn hàng #{Model.OrderId}";
+
+    string GetStatusBadgeClass(string? status) => status?.ToLower() switch
+    {
+        "pending" => "bg-warning text-dark",
+        "processing" => "bg-info text-white",
+        "shipping" => "bg-primary",
+        "delivered" or "completed" => "bg-success",
+        "cancelled" => "bg-secondary",
+        _ => "bg-secondary"
+    };
+
+    string GetStatusText(string? status) => status?.ToLower() switch
+    {
+        "pending" => "Chờ xử lý",
+        "processing" => "Đang xử lý",
+        "shipping" => "Đang giao",
+        "delivered" => "Đã giao",
+        "completed" => "Hoàn thành",
+        "cancelled" => "Đã hủy",
+        _ => "Không xác định"
+    };
+}
+
+<section class="py-5 order-detail-section">
+    <div class="container">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+            <div>
+                <p class="text-muted mb-1">Mã đơn hàng</p>
+                <h2 class="fw-bold mb-0">#@Model.OrderId</h2>
+            </div>
+            <div class="text-md-end">
+                <p class="mb-1">
+                    <strong>Trạng thái:</strong>
+                    <span class="badge @GetStatusBadgeClass(Model.OrderStatus) ms-2">@GetStatusText(Model.OrderStatus)</span>
+                </p>
+                <p class="mb-0 text-muted">Ngày đặt: @Model.OrderDate?.ToString("dd/MM/yyyy HH:mm")</p>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-box-open me-2"></i>Sản phẩm</h5>
+                        <button class="btn btn-outline-dark btn-sm" onclick="window.print()">
+                            <i class="fas fa-print me-1"></i>In hóa đơn
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-borderless align-middle mb-0 order-item-table">
+                                <thead>
+                                    <tr>
+                                        <th>Hình ảnh</th>
+                                        <th>Sản phẩm</th>
+                                        <th class="text-center">Giá</th>
+                                        <th class="text-center">Số lượng</th>
+                                        <th class="text-end">Thành tiền</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in Model.OrderDetails)
+                                    {
+                                        var image = string.IsNullOrWhiteSpace(item.ProductImage)
+                                            ? "/images/HinhSanPhamUnisex/default.jpg"
+                                            : item.ProductImage;
+                                        <tr>
+                                            <td>
+                                                <img src="@image"
+                                                     alt="@item.ProductName"
+                                                     class="product-thumb"
+                                                     onerror="this.src='/images/HinhSanPhamUnisex/default.jpg'">
+                                            </td>
+                                            <td>
+                                                <p class="fw-bold mb-1">@item.ProductName</p>
+                                                <p class="text-muted small mb-0">
+                                                    @if (!string.IsNullOrEmpty(item.Color))
+                                                    {
+                                                        <span class="me-2">Màu: <strong>@item.Color</strong></span>
+                                                    }
+                                                    @if (!string.IsNullOrEmpty(item.Size))
+                                                    {
+                                                        <span>Size: <strong>@item.Size</strong></span>
+                                                    }
+                                                </p>
+                                            </td>
+                                            <td class="text-center">@item.UnitPrice.ToString("#,##0") ₫</td>
+                                            <td class="text-center">@item.Quantity</td>
+                                            <td class="text-end fw-bold">@item.TotalPrice.ToString("#,##0") ₫</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td colspan="4" class="text-end text-muted">Tạm tính:</td>
+                                        <td class="text-end fw-bold">@Model.SubTotal.ToString("#,##0") ₫</td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="4" class="text-end text-muted">Giảm giá:</td>
+                                        <td class="text-end fw-bold text-success">-@((Model.DiscountAmount ?? 0).ToString("#,##0")) ₫</td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="4" class="text-end text-muted">Phí vận chuyển:</td>
+                                        <td class="text-end fw-bold">@((Model.ShippingFee ?? 0).ToString("#,##0")) ₫</td>
+                                    </tr>
+                                    <tr class="table-total-row">
+                                        <td colspan="4" class="text-end fw-bold">Tổng tiền:</td>
+                                        <td class="text-end fw-bold text-danger fs-5">@Model.TotalAmount.ToString("#,##0") ₫</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-white py-3">
+                        <h5 class="mb-0"><i class="fas fa-receipt me-2"></i>Thông tin thanh toán</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-3">
+                            <span>Tạm tính</span>
+                            <strong>@Model.SubTotal.ToString("#,##0") ₫</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-3">
+                            <span>Giảm giá</span>
+                            <strong>-@((Model.DiscountAmount ?? 0).ToString("#,##0")) ₫</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-3">
+                            <span>Phí vận chuyển</span>
+                            <strong>@((Model.ShippingFee ?? 0).ToString("#,##0")) ₫</strong>
+                        </div>
+                        <hr>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fw-bold">Tổng thanh toán</span>
+                            <span class="fw-bold text-danger fs-5">@Model.TotalAmount.ToString("#,##0") ₫</span>
+                        </div>
+                        <p class="text-muted mb-0 mt-3"><strong>Phương thức:</strong> @Model.PaymentMethod</p>
+                        @if (!string.IsNullOrWhiteSpace(Model.Notes))
+                        {
+                            <p class="text-muted small mb-0 mt-2"><strong>Ghi chú:</strong> @Model.Notes</p>
+                        }
+                    </div>
+                </div>
+
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-white py-3">
+                        <h5 class="mb-0"><i class="fas fa-user me-2"></i>Thông tin nhận hàng</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-1 fw-bold">@Model.FullName</p>
+                        <p class="mb-1 text-muted">@Model.Email</p>
+                        <p class="mb-3 text-muted">@Model.PhoneNumber</p>
+                        <p class="mb-0">
+                            <i class="fas fa-map-marker-alt me-2 text-muted"></i>
+                            @Model.ShippingAddress
+                        </p>
+                    </div>
+                </div>
+
+                <a asp-controller="Account" asp-action="MyOrders" class="btn btn-outline-dark w-100">
+                    <i class="fas fa-arrow-left me-2"></i>Quay lại đơn hàng của tôi
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    .order-detail-section .card {
+        border-radius: 18px;
+    }
+
+    .order-item-table thead th {
+        font-size: 0.95rem;
+        color: #666;
+        border-bottom: 2px solid #ececec;
+    }
+
+    .order-item-table tbody tr {
+        border-bottom: 1px solid #f1f1f1;
+    }
+
+    .order-item-table tbody td {
+        vertical-align: middle;
+    }
+
+    .order-item-table tfoot td {
+        border-top: none;
+        font-size: 0.95rem;
+        padding-top: 0.4rem;
+        padding-bottom: 0.4rem;
+    }
+
+    .table-total-row td {
+        background-color: #f5f5f5;
+        border-radius: 12px;
+        padding-top: 0.9rem;
+        padding-bottom: 0.9rem;
+    }
+
+    .product-thumb {
+        width: 80px;
+        height: 80px;
+        object-fit: cover;
+        border-radius: 12px;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+    }
+
+    @@media (max-width: 575.98px) {
+        .order-item-table thead {
+            display: none;
+        }
+
+        .order-item-table tbody tr {
+            display: block;
+            margin-bottom: 1rem;
+        }
+
+        .order-item-table tbody td {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: none;
+        }
+
+        .order-item-table tbody td:first-child {
+            justify-content: flex-start;
+        }
+    }
+</style>
+

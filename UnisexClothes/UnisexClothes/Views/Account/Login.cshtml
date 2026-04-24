@@ -1,0 +1,91 @@
+@{
+    ViewData["Title"] = "Đăng nhập";
+}
+
+<section class="py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-5">
+                <div class="card checkout-form">
+                    <div class="card-body p-5">
+                        <div class="text-center mb-4">
+                            <h2 class="fw-bold mb-2">Đăng nhập</h2>
+                            <p class="text-muted">Chào mừng trở lại UniStyle</p>
+                        </div>
+
+                        <form id="loginForm" onsubmit="submitLogin(event)">
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="email" required placeholder="Nhập email của bạn">
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Mật khẩu</label>
+                                <input type="password" class="form-control" id="password" required placeholder="Nhập mật khẩu">
+                            </div>
+
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="rememberMe">
+                                <label class="form-check-label" for="rememberMe">
+                                    Ghi nhớ đăng nhập
+                                </label>
+                            </div>
+
+                            <button type="submit" class="btn btn-unistyle w-100 mb-3">
+                                Đăng nhập
+                            </button>
+
+                            <div class="text-center">
+                                <p class="mb-0">Chưa có tài khoản? <a asp-controller="Account" asp-action="Register">Đăng ký ngay</a></p>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    <script>
+        async function submitLogin(event) {
+            event.preventDefault();
+
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+            const rememberMe = document.getElementById("rememberMe").checked;
+
+            try {
+                const response = await fetch('@Url.Action("Login", "Account")', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password, rememberMe })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    if (typeof showToast === 'function') {
+                        showToast(result.message || 'Đăng nhập thành công!');
+                    } else {
+                        alert(result.message || 'Đăng nhập thành công!');
+                    }
+                    
+                    // Redirect sau 500ms để user thấy thông báo
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 500);
+                } else {
+                    alert(result.message || 'Đăng nhập thất bại!');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                alert('Lỗi kết nối: ' + error.message);
+            }
+        }
+    </script>
+}

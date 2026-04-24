@@ -1,0 +1,549 @@
+@{
+    ViewData["Title"] = "Quản lý Danh mục";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <h2><i class="fas fa-tags"></i> Quản lý Danh mục</h2>
+        <p class="text-muted">Quản lý các danh mục sản phẩm</p>
+    </div>
+    <div class="col-md-6 text-end">
+        <button class="btn btn-primary" onclick="showCategoryModal()">
+            <i class="fas fa-plus"></i> Thêm danh mục mới
+        </button>
+    </div>
+</div>
+
+<!-- Statistics -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center">
+            <div class="card-body">
+                <h4 class="text-primary" id="totalCategories">0</h4>
+                <p class="mb-0 text-muted">Tổng danh mục</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center">
+            <div class="card-body">
+                <h4 class="text-success" id="activeCategories">0</h4>
+                <p class="mb-0 text-muted">Đang hoạt động</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center">
+            <div class="card-body">
+                <h4 class="text-warning" id="inactiveCategories">0</h4>
+                <p class="mb-0 text-muted">Đã ẩn</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center">
+            <div class="card-body">
+                <h4 class="text-info" id="totalProducts">0</h4>
+                <p class="mb-0 text-muted">Tổng sản phẩm</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Categories Table -->
+<div class="card border-0 shadow-sm">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Hình ảnh</th>
+                        <th>Tên danh mục</th>
+                        <th>Mô tả</th>
+                        <th>Thứ tự</th>
+                        <th>Trạng thái</th>
+                        <th>Số sản phẩm</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="categoriesTable">
+                    <tr>
+                        <td colspan="7" class="text-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Đang tải...</span>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Category Modal -->
+<div class="modal fade" id="categoryModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="categoryModalTitle">
+                    <i class="fas fa-plus"></i> Thêm danh mục mới
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="categoryForm">
+                    <input type="hidden" id="categoryId" value="0">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Tên danh mục <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="categoryName" required placeholder="Ví dụ: Áo, Quần, Phụ kiện">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Mô tả</label>
+                        <textarea class="form-control" id="categoryDescription" rows="3" placeholder="Mô tả về danh mục này..."></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Thứ tự hiển thị</label>
+                            <input type="number" class="form-control" id="displayOrder" value="0" min="0">
+                            <small class="text-muted">Số nhỏ hơn sẽ hiển thị trước</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Hình ảnh</label>
+                            <input type="text" class="form-control" id="categoryImage" placeholder="/images/categories/category.jpg">
+                            <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="uploadCategoryImageBtn" onclick="uploadCategoryImage(this)">
+                                <i class="fas fa-upload"></i> Upload hình
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="isActive" checked>
+                            <label class="form-check-label" for="isActive">
+                                Kích hoạt danh mục
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" onclick="saveCategory()">
+                    <i class="fas fa-save"></i> Lưu
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <style>
+        /* 🔧 CRITICAL FIX: Backdrop pointer-events */
+        .modal-backdrop {
+            pointer-events: none !important;
+        }
+        .modal-backdrop.show {
+            pointer-events: none !important;
+        }
+    </style>
+    
+    <script>
+        let categories = [];
+
+        // 🔧 CRITICAL FIX: MutationObserver to fix backdrop pointer-events immediately
+        const backdropObserver = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                mutation.addedNodes.forEach(function(node) {
+                    if (node.classList && node.classList.contains('modal-backdrop')) {
+                        node.style.pointerEvents = 'none';
+                        console.log('🔧 Fixed backdrop pointer-events immediately');
+                    }
+                });
+            });
+        });
+        backdropObserver.observe(document.body, { childList: true });
+        console.log('👁️ MutationObserver watching for backdrop additions...');
+
+        // 🔧 CRITICAL FIX: Fix backdrops on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            backdrops.forEach(backdrop => {
+                backdrop.style.pointerEvents = 'none';
+            });
+            
+            loadCategories();
+            
+            // 🔧 CRITICAL FIX: Add event listeners to category modal
+            const categoryModal = document.getElementById('categoryModal');
+            if (categoryModal) {
+                // Before modal shows
+                categoryModal.addEventListener('show.bs.modal', function() {
+                    const backdrops = document.querySelectorAll('.modal-backdrop');
+                    backdrops.forEach(backdrop => {
+                        backdrop.style.pointerEvents = 'none';
+                    });
+                    console.log('🔧 Before modal show: Fixed backdrop pointer-events');
+                });
+                
+                // After modal shows
+                categoryModal.addEventListener('shown.bs.modal', function() {
+                    const backdrops = document.querySelectorAll('.modal-backdrop');
+                    backdrops.forEach(backdrop => {
+                        backdrop.style.pointerEvents = 'none';
+                    });
+                    console.log('🔧 After modal shown: Fixed backdrop pointer-events');
+                });
+            }
+        });
+
+        // Load categories from API
+        async function loadCategories() {
+            try {
+                const response = await fetch('/Admin/GetCategories');
+                const result = await response.json();
+                
+                if (result.success) {
+                    categories = result.data;
+                    renderCategories();
+                    updateStatistics();
+                } else {
+                    console.error('Error loading categories:', result.message);
+                    showError('Không thể tải danh sách danh mục!');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showError('Có lỗi xảy ra khi tải danh sách danh mục!');
+            }
+        }
+
+        // Render categories table
+        function renderCategories() {
+            const tbody = document.getElementById('categoriesTable');
+            
+            if (categories.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">
+                            <i class="fas fa-inbox fa-2x mb-2"></i>
+                            <p>Chưa có danh mục nào. Hãy thêm danh mục mới!</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = categories.map(cat => `
+                <tr>
+                    <td>
+                        ${cat.image ? `<img src="${cat.image}" alt="${cat.name}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">` : '<i class="fas fa-image fa-2x text-secondary"></i>'}
+                    </td>
+                    <td><strong>${cat.name}</strong></td>
+                    <td>${cat.description || '<span class="text-muted">-</span>'}</td>
+                    <td>${cat.displayOrder}</td>
+                    <td>
+                        <span class="badge bg-${cat.isActive ? 'success' : 'secondary'}">
+                            ${cat.isActive ? 'Hoạt động' : 'Đã ẩn'}
+                        </span>
+                    </td>
+                    <td><span class="badge bg-primary">${cat.productCount || 0} sản phẩm</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="editCategory(${cat.id})" title="Sửa">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteCategory(${cat.id})" title="Xóa">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Update statistics
+        function updateStatistics() {
+            const total = categories.length;
+            const active = categories.filter(c => c.isActive).length;
+            const inactive = total - active;
+            const totalProducts = categories.reduce((sum, cat) => sum + (cat.productCount || 0), 0);
+
+            document.getElementById('totalCategories').textContent = total;
+            document.getElementById('activeCategories').textContent = active;
+            document.getElementById('inactiveCategories').textContent = inactive;
+            document.getElementById('totalProducts').textContent = totalProducts;
+        }
+
+        // Show category modal for add
+        function showCategoryModal() {
+            document.getElementById('categoryId').value = '0';
+            document.getElementById('categoryName').value = '';
+            document.getElementById('categoryDescription').value = '';
+            document.getElementById('displayOrder').value = '0';
+            document.getElementById('categoryImage').value = '';
+            document.getElementById('isActive').checked = true;
+            document.getElementById('categoryModalTitle').innerHTML = '<i class="fas fa-plus"></i> Thêm danh mục mới';
+            
+            // 🔧 CRITICAL FIX: Pre-set backdrop pointer-events before modal shows
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            backdrops.forEach(backdrop => {
+                backdrop.style.pointerEvents = 'none';
+            });
+            console.log('🔧 Pre-set backdrop pointer-events to none');
+            
+            const modal = new bootstrap.Modal(document.getElementById('categoryModal'));
+            modal.show();
+        }
+
+        // Edit category
+        function editCategory(id) {
+            const category = categories.find(c => c.id === id);
+            if (!category) return;
+
+            document.getElementById('categoryId').value = category.id;
+            document.getElementById('categoryName').value = category.name;
+            document.getElementById('categoryDescription').value = category.description || '';
+            document.getElementById('displayOrder').value = category.displayOrder;
+            document.getElementById('categoryImage').value = category.image || '';
+            document.getElementById('isActive').checked = category.isActive;
+            document.getElementById('categoryModalTitle').innerHTML = '<i class="fas fa-edit"></i> Sửa danh mục';
+            
+            // 🔧 CRITICAL FIX: Pre-set backdrop pointer-events before modal shows
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            backdrops.forEach(backdrop => {
+                backdrop.style.pointerEvents = 'none';
+            });
+            console.log('🔧 Pre-set backdrop pointer-events to none');
+            
+            const modal = new bootstrap.Modal(document.getElementById('categoryModal'));
+            modal.show();
+        }
+
+        // Save category
+        async function saveCategory() {
+            const categoryId = parseInt(document.getElementById('categoryId').value);
+            const categoryName = document.getElementById('categoryName').value.trim();
+            const description = document.getElementById('categoryDescription').value.trim();
+            const displayOrder = parseInt(document.getElementById('displayOrder').value) || 0;
+            const image = document.getElementById('categoryImage').value.trim();
+            const isActive = document.getElementById('isActive').checked;
+
+            if (!categoryName) {
+                alert('Vui lòng nhập tên danh mục!');
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('categoryId', categoryId);
+                formData.append('categoryName', categoryName);
+                formData.append('description', description);
+                formData.append('displayOrder', displayOrder);
+                formData.append('categoryImage', image);
+                formData.append('isActive', isActive);
+
+                const response = await fetch('/Admin/CategoryEdit', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('categoryModal'));
+                    modal.hide();
+                    showCategoryToast(result.message || 'Đã lưu danh mục thành công!');
+                    loadCategories();
+                } else {
+                    alert(result.message || 'Có lỗi xảy ra khi lưu danh mục!');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Có lỗi xảy ra khi lưu danh mục!');
+            }
+        }
+
+        // Delete category
+        async function deleteCategory(id) {
+            const category = categories.find(c => c.id === id);
+            if (!category) return;
+
+            if (!confirm(`Bạn có chắc chắn muốn xóa danh mục "${category.name}"?\n\nLưu ý: Nếu có sản phẩm trong danh mục này, bạn cần chuyển chúng sang danh mục khác trước!`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/Admin/CategoryDelete/${id}`, {
+                    method: 'POST'
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showCategoryToast(result.message || 'Đã xóa danh mục thành công!');
+                    loadCategories();
+                } else {
+                    alert(result.message || 'Có lỗi xảy ra khi xóa danh mục!');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Có lỗi xảy ra khi xóa danh mục!');
+            }
+        }
+
+        // Upload category image - Fixed to prevent stack overflow
+        function uploadCategoryImage(buttonElement) {
+            // Prevent multiple simultaneous uploads
+            if (uploadCategoryImage._uploading) {
+                return;
+            }
+            
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '*/*';
+            
+            // Clean up input after use
+            input.addEventListener('change', async function(e) {
+                const file = e.target.files[0];
+                if (!file) {
+                    uploadCategoryImage._uploading = false;
+                    input.remove();
+                    return;
+                }
+
+                const btn = buttonElement || document.getElementById('uploadCategoryImageBtn');
+                const originalText = btn ? btn.innerHTML : '<i class="fas fa-upload"></i> Upload hình';
+
+                // Set uploading flag
+                uploadCategoryImage._uploading = true;
+
+                try {
+                    // Show loading
+                    if (btn) {
+                        btn.disabled = true;
+                        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang upload...';
+                    }
+
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('type', 'category');
+
+                    const response = await fetch('/Admin/UploadImage', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        // Update image input
+                        const imageInput = document.getElementById('categoryImage');
+                        if (imageInput) {
+                            imageInput.value = result.url;
+                        }
+                        
+                        // Show success - use alert to avoid recursion
+                        alert('Upload hình ảnh thành công!');
+                    } else {
+                        throw new Error(result.message || 'Upload thất bại!');
+                    }
+                } catch (error) {
+                    console.error('Upload error:', error);
+                    alert('Có lỗi xảy ra khi upload hình ảnh!\n\n' + error.message);
+                } finally {
+                    // Reset flag
+                    uploadCategoryImage._uploading = false;
+                    
+                    // Restore button
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = originalText;
+                    }
+                    
+                    // Clean up
+                    input.remove();
+                }
+            });
+            
+            input.click();
+        }
+        
+        // Initialize uploading flag
+        uploadCategoryImage._uploading = false;
+
+        // Helper functions
+        function showCategoryToast(message) {
+            // Tránh gọi chính nó bằng cách dùng local function name khác
+            if (typeof window.showToast === 'function' && window.showToast !== showCategoryToast) {
+                try {
+                    window.showToast(message);
+                } catch (e) {
+                    alert(message);
+                }
+            } else {
+                alert(message);
+            }
+        }
+
+        function showError(message) {
+            alert(message);
+        }
+
+        // 🔧 CRITICAL FIX: Debugging helper functions
+        window.debugCategoryModalBackdrop = function() {
+            console.log('=== CATEGORY MODAL BACKDROP DEBUG ===');
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            console.log(`Found ${backdrops.length} backdrop(s)`);
+            
+            backdrops.forEach((backdrop, index) => {
+                const computed = window.getComputedStyle(backdrop);
+                console.log(`Backdrop #${index + 1}:`, {
+                    pointerEvents: computed.pointerEvents,
+                    zIndex: computed.zIndex,
+                    display: computed.display,
+                    opacity: computed.opacity
+                });
+                
+                if (computed.pointerEvents !== 'none') {
+                    console.error(`❌ Backdrop #${index + 1} has pointer-events: ${computed.pointerEvents} (should be none!)`);
+                } else {
+                    console.log(`✅ Backdrop #${index + 1} has correct pointer-events: none`);
+                }
+            });
+        };
+
+        window.fixCategoryModalBackdrop = function() {
+            console.log('🔧 Manually fixing category modal backdrop...');
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            backdrops.forEach((backdrop, index) => {
+                backdrop.style.pointerEvents = 'none';
+                backdrop.style.setProperty('pointer-events', 'none', 'important');
+                console.log(`Fixed backdrop #${index + 1}`);
+            });
+            console.log('✅ Done! Try clicking buttons now.');
+        };
+
+        window.clearStuckCategoryModal = function() {
+            console.log('🧹 Clearing stuck category modal overlay...');
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            backdrops.forEach(backdrop => backdrop.remove());
+            const modal = bootstrap.Modal.getInstance(document.getElementById('categoryModal'));
+            if (modal) modal.hide();
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+            console.log('✅ Cleared!');
+        };
+
+        console.log('📋 Available debugging commands:');
+        console.log('   debugCategoryModalBackdrop()  - Check backdrop pointer-events status');
+        console.log('   fixCategoryModalBackdrop()    - Manually fix backdrop pointer-events');
+        console.log('   clearStuckCategoryModal()     - Clear stuck modal and backdrop');
+    </script>
+}
+
